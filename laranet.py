@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from utility.lara_structures import create
-
+torch.autograd.set_detect_anomaly(True)
 
 class LARANet(nn.Module):
 
@@ -14,6 +14,34 @@ class LARANet(nn.Module):
             for node in layer:
                 for route in node["routes"]: self._sub_modules.append(route["route"])
                 for source in node["sources"]: self._sub_modules.append(source["source"])
+
+    def _route(self, z, layers, node, best, li):
+        for route in node["routes"]:
+            target = layers[li + 1][route["target_index"]]
+            if target["state"] is not None:
+
+                if z is None:
+                    z = route["route"](node["state"], target["state"])
+                else:
+                    z = z + route["route"](node["state"], target["state"])
+
+                if route["route"].candidness() > best["score"]:
+                    best["score"] = route["route"].candidness()
+                    best["target"] = target
+            else:
+                best["target"] = target
+                best["score"] = 1  # <- All nodes must have been active at least once!
+        return z
+
+    def _source(self, z, node, li):
+        for source in node["sources"]:
+            target = self._struc["layers"][li - 1][source["target_index"]]
+            if target["state"] is not None:
+                if z is None:
+                    z = source["source"](target["state"])
+                else:
+                    z = z + source["source"](target["state"])
+        return z
 
     def forward(self, x):
         layers = self._struc["layers"]
@@ -28,32 +56,13 @@ class LARANet(nn.Module):
                     best, z = {"target": None, "score": -10}, None
                     if li == 0: z = x
 
-                    for route in node["routes"]:
-                        target = layers[li + 1][route["target_index"]]
-                        if target["state"] is not None:
-
-                            if z is None:
-                                z = route["route"](node["state"], target["state"])
-                            else:
-                                z = z + route["route"](node["state"], target["state"])
-
-                            if route["route"].candidness() > best["score"]:
-                                best["score"] = route["route"].candidness()
-                                best["target"] = target
-                        else:
-                            best["target"] = target
-                            best["score"] = 1  # <- All nodes must have been active at least once!
+                    z = self._route(z=z, layers=layers, node=node, best=best, li=li)
 
                     if li < len(layers) - 1: best["target"]["active"] = True
-                    print("Activation at: L[" + str(li) + "]N[" + str(ni) + "]; Best: S[" + str(best["score"]) + "]")
-                    for source in node["sources"]:
-                        target = self._struc["layers"][li - 1][source["target_index"]]
-                        if target["state"] is not None:
 
-                            if z is None:
-                                z = source["source"](target["state"])
-                            else:
-                                z = z + source["source"](target["state"])
+                    print("Activation at: L[" + str(li) + "]N[" + str(ni) + "]; Best: S[" + str(best["score"]) + "]")
+
+                    z = self._source(z=z, node=node, li=li)
 
                     if z is not None: node["state"] = torch.nn.functional.softplus(z)
                     node["active"] = False  # Reset activity (new target has been chosen...)
@@ -100,10 +109,10 @@ optimizer = torch.optim.SGD(model.parameters(), lr=1e-4)
 i = 0
 for t in range(10):  # range(750):
     # Forward pass: Compute predicted y by passing x to the model
-    y_pred = model(x)
+    y_pred = model(x.clone())
 
     # Compute and print loss
-    loss = criterion(y_pred, y)
+    loss = criterion(y_pred.clone(), y.clone())
     # if t % 100 == 99:
     print(t, loss.item())
     # assert loss.item()==expected[i]

@@ -43,9 +43,8 @@ for t in range(750):
     # Compute and print loss
     loss = criterion(y_pred, y)
     if t % 100 == 99:
-        l = loss.item()
-        print(t, l)
-        delta = abs(expected[i] - l)
+        print(t, loss.item())
+        delta = abs(expected[i] - loss.item())
         assert delta < 0.00000001
         i += 1
 
