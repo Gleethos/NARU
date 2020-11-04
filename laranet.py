@@ -12,8 +12,10 @@ class LARANet(nn.Module):
         self._struc = create(depth=depth, max_dim=100, max_paths=5, D_in=D_in, D_out=D_out)
         for layer in self._struc["layers"]:
             for node in layer:
-                for route in node["routes"]: self._sub_modules.append(route["route"])
-                for source in node["sources"]: self._sub_modules.append(source["source"])
+                for route in node["routes"]:
+                    self._sub_modules.append(route["route"])
+                for source in node["sources"]:
+                    self._sub_modules.append(source["source"])
 
     def _route(self, z, layers, node, best, li):
         for route in node["routes"]:
@@ -36,11 +38,14 @@ class LARANet(nn.Module):
     def _source(self, z, node, li):
         for source in node["sources"]:
             target = self._struc["layers"][li - 1][source["target_index"]]
+            #if 2 in [p._version for p in source["source"].parameters()] :
+            #    print('L'+str(li), [p._version for p in source["source"].parameters()])
             if target["state"] is not None:
                 if z is None:
                     z = source["source"](target["state"])
                 else:
                     z = z + source["source"](target["state"])
+
         return z
 
     def forward(self, x):
@@ -69,6 +74,14 @@ class LARANet(nn.Module):
 
         return layers[len(layers) - 1][0]["state"]
 
+    def detach_states(self):
+        layers = self._struc["layers"]
+        for li in range(len(layers)):
+            layer = layers[li]
+            for ni in range(len(layer)):
+                node = layer[ni]
+                if node['state'] is not None :
+                    node['state'] = node['state'].clone()#.detach() # Fixes in-place operation error called by backprop
 
 torch.manual_seed(842)
 
@@ -88,7 +101,7 @@ model = LARANet(D_in, D_out)
 i = 0
 for parameter in model.parameters(): i += 1
 print(i)
-# assert i == 3
+assert i == 92
 
 expected = [
     0.000969238462857902,
@@ -122,3 +135,4 @@ for t in range(10):  # range(750):
     optimizer.zero_grad()
     loss.backward(retain_graph=True)
     optimizer.step()
+    #model.detach_states()
