@@ -99,47 +99,40 @@ del s, c, e, e_c
 class Group:
 
     def __init__(self, index, dimensionality):
-        self._from = dict()
-        self._to = dict()
-        self._index = index
-        self._dimensionality = dimensionality
-        self._is_sleeping = False
+        self.from_conns = dict()
+        self.to_conns = dict()
+        self.index = index
+        self.dimensionality = dimensionality
+        self.is_sleeping = False
         self.state = None
-        self._targets = [] # indices of targeted routes!
+        self.targets = [] # indices of targeted routes!
+        self.error = None
+        self.error_count = 0
 
     # IO :
 
-    def index(self):
-        return self._index
-
-    def dimensionality(self):
-        return self._dimensionality
-
-    def is_woke(self):
-        return not self._is_sleeping
-
     def fall_asleep(self):
-        self._is_sleeping = True
+        self.is_sleeping = True
 
     def wake_up(self):
-        self._is_sleeping = False
+        self.is_sleeping = False
 
     def state(self):
         return self.state
 
     def getParams(self):
         params = []
-        for node, route in self._to.items():
+        for node, route in self.to_conns.items():
             params.extend(route.getParams())
         return params
 
     def str(self, level):
         return level + 'Group: {\n' + \
-               level + '   from: ' + str(len(self._from)) + '\n' + \
-               level + '   to: ' + str(len(self._to)) + '\n' + \
-               level + '   index: ' + str(self._index) + ', ' + 'dimensionality: ' + str(self._dimensionality) + ', ' + \
-               'is_sleeping: ' + str(self._is_sleeping) + '\n' + \
-               level + '   targets: ' + str(self._targets) + '\n' + \
+               level + '   from: ' + str(len(self.from_conns)) + '\n' + \
+               level + '   to: ' + str(len(self.to_conns)) + '\n' + \
+               level + '   index: ' + str(self.index) + ', ' + 'dimensionality: ' + str(self.dimensionality) + ', ' + \
+               'is_sleeping: ' + str(self.is_sleeping) + '\n' + \
+               level + '   targets: ' + str(self.targets) + '\n' + \
                level + '   state: ' + str(self.state) + '\n' + \
                level + '};\n'
 
@@ -148,36 +141,35 @@ class Group:
     def connect_forward(self, next_groups, cone_size, step):
         cone_size = min(cone_size, len(next_groups))
         for i in range(cone_size):
-            target_index = (self.index() + i * step) % len(next_groups)
+            target_index = (self.index + i * step) % len(next_groups)
             target_group = next_groups[target_index]
-            self._targets.append(target_index)
-            assert target_group.index() == target_index
-            self._to[target_group] = Route(self.dimensionality(), target_group.dimensionality())
+            self.targets.append(target_index)
+            assert target_group.index == target_index
+            self.to_conns[target_group] = Route(self.dimensionality, target_group.dimensionality)
             target_group.register_source(self)
 
     def register_source(self, origin_group):
-        self._from[origin_group] = Source(origin_group.dimensionality(), self.dimensionality())
+        self.from_conns[origin_group] = Source(origin_group.dimensionality, self.dimensionality)
 
     # Execution :
 
     def start_with(self, x):
-        this_is_start = len(self._from) == 0
+        this_is_start = len(self.from_conns) == 0
         assert this_is_start
         self.state = x
 
-    def forward(self, queue):
+    def forward(self, time):
 
-        assert self.is_woke()
-        this_is_start = len(self._from) == 0
+        this_is_start = len(self.from_conns) == 0
 
-        if self.is_woke() or this_is_start:
+        if not self.is_sleeping or this_is_start:
             z = None
             if this_is_start:
                 z = self.state  # Start group!
                 assert z is not None
 
             # Source activations :
-            for group, source in self._from.items():
+            for group, source in self.from_conns.items():
 
                 if z is None : z = source.forward(group.state())
                 else : z = z + source.forward(group.state())
@@ -185,7 +177,7 @@ class Group:
             # Route activations :
             best_target = None
             best_score = 0
-            for group, route in self._to.items():
+            for group, route in self.to_conns.items():
 
                 if z is None : z = route.forward(self.state(), group.state(), time)
                 else: z = z + route.forward(self.state(), group.state(), time)
@@ -200,14 +192,22 @@ class Group:
             # We activate the best group of neurons :
             best_target.wake_up()
             # No we save the next neuron group which ought to be activated :
-            queue.push(best_target)
+
             assert z is not None
 
             if not this_is_start:
-                self.state = self.mish(z) # If this is not the start of the network... : Activate!
+                self.state = self.activation(z) # If this is not the start of the network... : Activate!
 
-    def mish(self, x):  # State of the Art activation function
-        return x * torch.tanh(nn.functional.softplus(x))
+            return best_target # The best group is being returned!
+
+    def backward(self, e, time):
+        pass#if e is None :
+
+
+    def activation(self, x, derive=False):  # State of the Art activation function, SWISH
+        if derive : return torch.sigmoid(x)
+        else : return torch.sigmoid(x) * x
+        #return x * torch.tanh(nn.functional.softplus(x)) # MISH might also be interesting
 
 
 # ----------------------------------------------------------------------------------------------------------------------#
@@ -322,7 +322,7 @@ net = Network(
     D_in=100,
     D_out=10,
 )
-print(net.str())
+#print(net.str())
 
 expected_structure = [
     {
@@ -386,12 +386,12 @@ for ci in range(len(net._capsules)) :
     assert expected_capsule['height'] == len(given_capsule._groups)
     for gi in range(len(given_capsule._groups)):
         given_group = given_capsule._groups[gi]
-        assert given_group._targets == expected_capsule['targets'][gi]
+        assert given_group.targets == expected_capsule['targets'][gi]
         if isinstance(expected_capsule['from'],list):
-            assert len(given_group._from) == expected_capsule['from'][gi]
+            assert len(given_group.from_conns) == expected_capsule['from'][gi]
         else :
-            assert len(given_group._from) == expected_capsule['from']
-        assert len(given_group._to) == expected_capsule['to']
+            assert len(given_group.from_conns) == expected_capsule['from']
+        assert len(given_group.to_conns) == expected_capsule['to']
 
 net = Network(
     depth=4,
@@ -401,4 +401,4 @@ net = Network(
     D_in=100,
     D_out=10,
 )
-print(net.str())
+#print(net.str())
