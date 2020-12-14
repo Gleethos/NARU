@@ -120,6 +120,7 @@ criterion = torch.nn.MSELoss(reduction='sum')
 
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-4)
 i = 0
+
 for t in range(10):  # range(750):
     # Forward pass: Compute predicted y by passing x to the model
     y_pred = model(x.clone())
@@ -134,5 +135,8 @@ for t in range(10):  # range(750):
     # Zero gradients, perform a backward pass, and update the weights.
     optimizer.zero_grad()
     loss.backward(retain_graph=True)
+    #for p in model.parameters() : p.detach()
     optimizer.step()
-    #model.detach_states()
+    model.detach_states()
+
+
