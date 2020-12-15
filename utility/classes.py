@@ -23,25 +23,23 @@ class Route:
         self.Wgr = torch.randn(D_in, 1)
         self.g = 0
         self.pd_g = None # the partial derivative of g
-        self.history = defaultdict(lambda: Moment())
-
-    def at(self, time): return self.history[time]
+        self.at = defaultdict(lambda: Moment()) # history
 
     def getParams(self): return [self.Wr, self.Wgr, self.Wgh]
 
     def forward(self, h, r, time):
         g = r.matmul(self.Wgr)  # self._x_dot(x)
         if h is not None: g = h.matmul(self.Wgh) + g  # self._h_dot(h) + g
-        self.history[time].pd_g = sig(g, derive=True)
+        self.at[time].pd_g = sig(g, derive=True)
         g = sig(g)
-        self.at(time).g = g.mean().item()
-        self.at(time).z = r.matmul(self.Wr)
-        c = g * self.at(time).z
+        self.at[time].g = g.mean().item()
+        self.at[time].z = r.matmul(self.Wr)
+        c = g * self.at[time].z
         return c
 
     def backward(self, e_c, time):
         g_r = e_c.matmul(self.Wr.T)
-        e_g = e_c.matmul(self.at(time).z) * self.at(time).pd_g
+        e_g = e_c.matmul(self.at[time].z) * self.at[time].pd_g
         g_r += e_g.matmul(self.Wgr.T)
         g_h = e_g.matmul(self.Wgh.T)
         return (g_h, g_r)
@@ -96,6 +94,13 @@ del s, c, e, e_c
 # ----------------------------------------------------------------------------------------------------------------------#
 # GROUP
 
+def default_group_moment():
+    m = Moment()
+    m.state = None
+    m.is_sleeping = False
+    m.derivative = None
+    return m
+
 class Group:
 
     def __init__(self, index, dimensionality):
@@ -103,22 +108,17 @@ class Group:
         self.to_conns = dict()
         self.index = index
         self.dimensionality = dimensionality
-        self.is_sleeping = False
-        self.state = None
+
         self.targets = [] # indices of targeted routes!
         self.error = None
         self.error_count = 0
 
+        # history:
+        self.at = defaultdict(lambda : default_group_moment())
+        #self.is_sleeping = False
+        #self.state = None
+
     # IO :
-
-    def fall_asleep(self):
-        self.is_sleeping = True
-
-    def wake_up(self):
-        self.is_sleeping = False
-
-    def state(self):
-        return self.state
 
     def getParams(self):
         params = []
@@ -162,7 +162,7 @@ class Group:
 
         this_is_start = len(self.from_conns) == 0
 
-        if not self.is_sleeping or this_is_start:
+        if not self.at[time].is_sleeping or this_is_start:
             z = None
             if this_is_start:
                 z = self.state  # Start group!
@@ -171,16 +171,16 @@ class Group:
             # Source activations :
             for group, source in self.from_conns.items():
 
-                if z is None : z = source.forward(group.state())
-                else : z = z + source.forward(group.state())
+                if z is None : z = source.forward(group.at[time].state)
+                else : z = z + source.forward(group.at[time].state)
 
             # Route activations :
             best_target = None
             best_score = 0
             for group, route in self.to_conns.items():
 
-                if z is None : z = route.forward(self.state(), group.state(), time)
-                else: z = z + route.forward(self.state(), group.state(), time)
+                if z is None : z = route.forward(self.at[time].state, group.at[time].state, time)
+                else: z = z + route.forward(self.at[time].state, group.at[time].state, time)
 
                 # Checking if this route is better than another :
                 if route.candidness() > best_score:
@@ -190,18 +190,42 @@ class Group:
             assert best_target is not None # There has to be a choice!
 
             # We activate the best group of neurons :
-            best_target.wake_up()
+            best_target.history[time].is_sleeping = False # wake up!
             # No we save the next neuron group which ought to be activated :
 
             assert z is not None
 
             if not this_is_start:
-                self.state = self.activation(z) # If this is not the start of the network... : Activate!
+                self.at[time].state = self.activation(z) # If this is not the start of the network... : Activate!
+                self.at[time].derivative = self.activation(z, derive=True)
 
             return best_target # The best group is being returned!
 
     def backward(self, e, time):
-        pass#if e is None :
+
+        if not self.at[time].is_sleeping :
+            # Source backprop :
+            for group, source in self.from_conns.items():
+
+                if group.error is None : group.error = source.backward(e)
+                else : group.error = group.error + source.backward(e)
+
+            # Route backprop :
+            for group, route in self.to_conns.items():
+
+                g_h, g_r = route.backward(e, time)
+
+                if group.error is None : group.error = g_r
+                else : group.error = group.error + g_r
+
+            # Source Group backprop :
+            for group, source in self.from_conns.items():
+                group.backward(self.at[time].derivative, time-1)
+
+            # Route Groupe backprop :
+            for group, route in self.to_conns.items():
+                group.backward(self.at[time].derivative, time - 1)
+
 
 
     def activation(self, x, derive=False):  # State of the Art activation function, SWISH
@@ -216,25 +240,22 @@ class Group:
 class Capsule:
 
     def __init__(self, dimensionality, size):
-        self._groups = []
+        self.groups = []
         for i in range(size):
-            self._groups.append(Group(i, dimensionality))
+            self.groups.append(Group(i, dimensionality))
 
     # IO :
 
     def getParams(self):
         params = []
-        for group in self._groups:
+        for group in self.groups:
             params.extend(group.getParams())
         return params
 
-    def groups(self):
-        return self._groups
-
     def str(self, level):
         asStr = level + 'Capsule: {\n'
-        asStr += (level+'   height: ' + str(len(self._groups)) + '\n')
-        for group in self._groups:
+        asStr += (level +'   height: ' + str(len(self.groups)) + '\n')
+        for group in self.groups:
             asStr += group.str(level + '   ')
         asStr += ('\n' + level + '};\n')
         return asStr
@@ -242,16 +263,16 @@ class Capsule:
     # Construction :
 
     def connect_forward(self, next_capsule, max_cone, step):
-        for group in self._groups:
-            group.connect_forward(next_capsule.groups(), max_cone, step)
+        for group in self.groups:
+            group.connect_forward(next_capsule.groups, max_cone, step)
 
     # Execution :
 
     def start_with(self, x):
         # This is only allowed to be called
         # on first capsule of the network !
-        assert len(self._groups) == 1
-        for group in self._groups: group.start_with(x)
+        assert len(self.groups) == 1
+        for group in self.groups: group.start_with(x)
 
 
 # ----------------------------------------------------------------------------------------------------------------------#
@@ -277,9 +298,9 @@ class Network:
 
         for i in range(depth):
             if i != depth - 1:
-                assert len(self._capsules[i]._groups) * max_cone >= len(self._capsules[i + 1]._groups)
-                current_cone = min(len(self._capsules[i + 1]._groups), max_cone)
-                step = max(1, int(len(self._capsules[i + 1]._groups) / current_cone))
+                assert len(self._capsules[i].groups) * max_cone >= len(self._capsules[i + 1].groups)
+                current_cone = min(len(self._capsules[i + 1].groups), max_cone)
+                step = max(1, int(len(self._capsules[i + 1].groups) / current_cone))
                 self._capsules[i].connect_forward(self._capsules[i + 1], current_cone, step)
 
         #self._sub_modules = torch.nn.ModuleList([])
@@ -383,9 +404,9 @@ assert len(net._capsules) == len(expected_structure)
 for ci in range(len(net._capsules)) :
     expected_capsule = expected_structure[ci]
     given_capsule = net._capsules[ci]
-    assert expected_capsule['height'] == len(given_capsule._groups)
-    for gi in range(len(given_capsule._groups)):
-        given_group = given_capsule._groups[gi]
+    assert expected_capsule['height'] == len(given_capsule.groups)
+    for gi in range(len(given_capsule.groups)):
+        given_group = given_capsule.groups[gi]
         assert given_group.targets == expected_capsule['targets'][gi]
         if isinstance(expected_capsule['from'],list):
             assert len(given_group.from_conns) == expected_capsule['from'][gi]
