@@ -1,6 +1,6 @@
 
-# LARA is all you need #
-## *Learned Activity Routing Agent* ##
+# NARU is all you need #
+## *Neural Activity Routing Unit* ##
 
 In this paper we want to propose a new type of neural network model
 coupled with a novel layer routing algorithm 
