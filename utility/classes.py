@@ -3,130 +3,191 @@ from collections import defaultdict
 
 import torch
 import torch.nn as nn
+
 torch.manual_seed(666)
 
-class Moment : pass
 
-def sig(x, derive=False) :
+class Moment:
+    def __init__(self):
+        self.is_record = False
+    pass
+
+
+def sig(x, derive=False):
     s = torch.sigmoid(x)
-    if derive : return s*(1-s)
-    else : return s
+    if derive:
+        return s * (1 - s)
+    else:
+        return s
+
+
+# ----------------------------------------------------------------------------------------------------------------------#
+# HISTORY BASE CLASS
+
+class Recorder:
+    def __init__(self, default_lambda):
+        self.history: dict = defaultdict(default_lambda)  # history
+
+    def at(self, time: int):
+        is_record = self.history[time].is_record
+        while not is_record:
+            time -= 1
+            is_record = self.history[time].is_record
+            if time < 0 : # first time step is recorded by default!
+                self.history[0] = self.history[0]
+                self.history[0].is_recorded = True
+                return self.history[0]
+        return self.history[time]
+
+    def rec(self, time: int):
+        self.history[time] = self.history[time]  # new entry (new Moment object)
+        self.history[time].is_record = True
+        return self.history[time]
+
 
 # ----------------------------------------------------------------------------------------------------------------------#
 # ROUTE
 
-class Route:
-    def __init__(self, D_h=None, D_in=10, D_out=10):
-        if D_h is None: D_h = D_in
+class Route(Recorder):
+    def __init__(self, D_in=10, D_out=10):
+        super().__init__(default_lambda=lambda: Moment())
+        D_h = D_out
         self.Wr = torch.randn(D_in, D_out)
+        self.Wr.grad = torch.zeros(D_in, D_out)
         self.Wgh = torch.randn(D_h, 1)
+        self.Wgh.grad = torch.zeros(D_h, 1)
         self.Wgr = torch.randn(D_in, 1)
-        self.g = 0
-        self.pd_g = None # the partial derivative of g
-        self.at = defaultdict(lambda: Moment()) # history
+        self.Wgr.grad = torch.zeros(D_in, 1)
+        self.pd_g: torch.Tensor = None  # the partial derivative of g
 
-    def getParams(self): return [self.Wr, self.Wgr, self.Wgh]
+    def get_params(self):
+        return [self.Wr, self.Wgr, self.Wgh]
 
-    def forward(self, h, r, time):
-        g = r.matmul(self.Wgr)  # self._x_dot(x)
-        if h is not None: g = h.matmul(self.Wgh) + g  # self._h_dot(h) + g
-        self.at[time].pd_g = sig(g, derive=True)
+    def forward(self, h: torch.Tensor, r: torch.Tensor, time):
+        g = r.matmul(self.Wgr)
+        if h is not None: g = h.matmul(self.Wgh) + g
+        self.rec(time).pd_g = sig(g, derive=True)
         g = sig(g)
-        self.at[time].g = g.mean().item()
-        self.at[time].z = r.matmul(self.Wr)
-        c = g * self.at[time].z
+        self.rec(time).g = g.mean().item()  # g is used for routing!
+        self.rec(time).z = r.matmul(self.Wr)
+        c = g * self.at(time).z
         return c
 
-    def backward(self, e_c, time):
+    def backward(self, e_c, time, r, h):
+        self.Wr.grad += r.T.matmul(e_c * self.at(time).g)
         g_r = e_c.matmul(self.Wr.T)
-        e_g = e_c.matmul(self.at[time].z) * self.at[time].pd_g
+        e_g = e_c.matmul(self.at(time).z.T) * self.at(time).pd_g
+        self.Wgr.grad += r.T.matmul(e_g)
+        self.Wgh.grad += h.T.matmul(e_g)
         g_r += e_g.matmul(self.Wgr.T)
         g_h = e_g.matmul(self.Wgh.T)
         return (g_h, g_r)
 
-    def candidness(self):
-        return self.g
 
+
+# TESTING:
 
 route = Route(D_in=3, D_out=2)
-r = torch.ones(3)
-h = torch.ones(3)
+r = torch.ones(1, 3)
+h = torch.ones(1, 2)
 
-c = route.forward(h,r,0)
-assert str(c) == 'tensor([-3.1501, -0.0353])'
+c = route.forward(h, r, 0)
+assert str(c) == 'tensor([[-3.0741, -0.0344]])'
 
-g_h, g_r = route.backward(torch.tensor([-1.0, 1.0]),0)
-assert str(g_h) == 'tensor([ 1.2534,  0.2197, -0.3332])'
-assert str(g_r) == 'tensor([1.7005, 1.5327, 0.1335])'
+g_h, g_r = route.backward(
+    torch.tensor([[-1.0, 1.0]]), 0,
+    h=torch.tensor([[2.0, -3.0]]),
+    r=torch.tensor([[-1.0, 4.0, 2.0]])
+)
+assert str(g_h) == 'tensor([[1.3836, 0.2425]])'
+assert str(g_r) == 'tensor([[1.8145, 0.9111, 0.1612]])'
+
+assert str(route.Wgh.grad) == "tensor([[ 1.0678],\n        [-1.6017]])"
+assert str(route.Wgr.grad) == "tensor([[-0.5339],\n        [ 2.1356],\n        [ 1.0678]])"
+assert str(route.Wr.grad) == "tensor([[ 0.8244, -0.8244],\n        [-3.2974,  3.2974],\n        [-1.6487,  1.6487]])"
 
 del route, r, h, c, g_r, g_h
+
 
 # ----------------------------------------------------------------------------------------------------------------------#
 # SOURCE
 
-class Source:
-    def __init__(self, D_in, D_out):
-        self.Ws = torch.randn(D_out, D_in)
+def default_source_moment():
+    m = Moment()
+    m.g = -1
 
-    def getParams(self): return [self.Ws]
+class Source(Recorder):
+    def __init__(self, D_in: int, D_out: int):
+        super().__init__(default_source_moment())
+        self.Ws = torch.randn(D_in, D_out)
+        self.Ws.grad = torch.zeros(D_in, D_out)  # Gradients!
 
-    def forward(self, s):
+    def get_params(self): return [self.Ws]
+
+    def forward(self, s: torch.Tensor):
         return s.matmul(self.Ws)
 
-    def backward(self, e_s):
+    def backward(self, e_s: torch.Tensor, s: torch.Tensor):
+        print(s.shape)
+        print(e_s.shape)
+        print(self.Ws.shape)
+        self.Ws.grad += s.T.matmul(e_s)
         return e_s.matmul(self.Ws.T)
 
-    def candidness(self): return -1
+
+
+# TESTING:
 
 source = Source(D_in=2, D_out=3)
-s = torch.ones(3)
+s = torch.ones(1, 2)
 c = source.forward(s)
 
-assert str(c) == 'tensor([-0.1818,  0.2568])'
+assert str(c) == 'tensor([[-0.3784,  0.7585, -0.2807]])'# shape=(1,3)
 
-e = torch.ones(2)
-e_c = source.backward(e)
+e = torch.ones(1, 3)
+e_c = source.backward(e, s=torch.tensor([[2.0, -1.0]])) #shape=(1,2)
 
-assert str(e_c) == 'tensor([ 1.1008, -0.6303, -0.3955])'
+assert str(e_c) == 'tensor([[ 1.2484, -1.1490]])'#shape=(1,2)
+assert str(source.Ws.grad) == "tensor([[ 2.,  2.,  2.],\n        [-1., -1., -1.]])"
 
 del s, c, e, e_c
+
 
 # ----------------------------------------------------------------------------------------------------------------------#
 # GROUP
 
-def default_group_moment():
+# A moment holds information about a concrete moment in time t!
+# This is important for back-propagation
+def default_moment(dimensionality: int):
     m = Moment()
-    m.state = None
-    m.is_sleeping = False
+    m.state = torch.zeros(1, dimensionality)
+    m.is_sleeping = True
     m.derivative = None
     return m
 
-class Group:
 
-    def __init__(self, index, dimensionality):
+class Group(Recorder):
+
+    def __init__(self, index: int, dimensionality: int):
+        super().__init__(default_lambda=lambda: default_moment(dimensionality))
         self.from_conns = dict()
         self.to_conns = dict()
         self.index = index
         self.dimensionality = dimensionality
 
-        self.targets = [] # indices of targeted routes!
-        self.error = None
-        self.error_count = 0
-
-        # history:
-        self.at = defaultdict(lambda : default_group_moment())
-        #self.is_sleeping = False
-        #self.state = None
+        self.targets = []  # indices of targeted routes! (routes to groups)
+        self.error = None  # the current accumulated error
+        self.error_count = 0  # the number of errors summed up within the current accumulated error
 
     # IO :
 
-    def getParams(self):
+    def get_params(self):
         params = []
         for node, route in self.to_conns.items():
-            params.extend(route.getParams())
+            params.extend(route.get_params())
         return params
 
-    def str(self, level):
+    def str(self, level: str):
         return level + 'Group: {\n' + \
                level + '   from: ' + str(len(self.from_conns)) + '\n' + \
                level + '   to: ' + str(len(self.to_conns)) + '\n' + \
@@ -138,7 +199,8 @@ class Group:
 
     # Construction :
 
-    def connect_forward(self, next_groups, cone_size, step):
+    def connect_forward(self, next_groups: list, cone_size: int, step: int):
+        assert step > 0
         cone_size = min(cone_size, len(next_groups))
         for i in range(cone_size):
             target_index = (self.index + i * step) % len(next_groups)
@@ -153,85 +215,156 @@ class Group:
 
     # Execution :
 
-    def start_with(self, x):
+    def start_with(self, x: torch.Tensor):
         this_is_start = len(self.from_conns) == 0
         assert this_is_start
-        self.state = x
+        self.rec(0).state = x
 
-    def forward(self, time):
-
+    def forward(self, time: int):
+        assert time >= 0
         this_is_start = len(self.from_conns) == 0
 
-        if not self.at[time].is_sleeping or this_is_start:
+        if not self.at(time).is_sleeping or this_is_start:
             z = None
             if this_is_start:
-                z = self.state  # Start group!
+                z = self.at(time).state  # Start group!
                 assert z is not None
 
             # Source activations :
             for group, source in self.from_conns.items():
 
-                if z is None : z = source.forward(group.at[time].state)
-                else : z = z + source.forward(group.at[time].state)
+                if z is None:
+                    z = source.forward(group.at(time).state)
+                else:
+                    z = z + source.forward(group.at(time).state)
 
             # Route activations :
             best_target = None
             best_score = 0
             for group, route in self.to_conns.items():
 
-                if z is None : z = route.forward(self.at[time].state, group.at[time].state, time)
-                else: z = z + route.forward(self.at[time].state, group.at[time].state, time)
+                if z is None:
+                    z = route.forward(self.at(time).state, group.at(time).state, time)
+                else:
+                    z = z + route.forward(self.at(time).state, group.at(time).state, time)
 
                 # Checking if this route is better than another :
-                if route.candidness() > best_score:
-                    best_score = route.candidness
+                print('Route Gate:',route.at(time).g,'>?>',best_score)
+                if route.at(time).g > best_score:
+                    best_score = route.at(time).g
                     best_target = group
 
-            assert best_target is not None # There has to be a choice!
+            if len(self.to_conns.items()) > 0:
+                assert best_target is not None  # There has to be a choice!
 
-            # We activate the best group of neurons :
-            best_target.history[time].is_sleeping = False # wake up!
-            # No we save the next neuron group which ought to be activated :
+                # We activate the best group of neurons :
+                best_target.rec(time+1).is_sleeping = False  # wake up!
+                # No we save the next neuron group which ought to be activated :
 
             assert z is not None
 
             if not this_is_start:
-                self.at[time].state = self.activation(z) # If this is not the start of the network... : Activate!
-                self.at[time].derivative = self.activation(z, derive=True)
+                self.rec(time).state = self.activation(z)  # If this is not the start of the network... : Activate!
+                self.rec(time).derivative = self.activation(z, derive=True)
+            else:
+                self.rec(time).state = z
 
-            return best_target # The best group is being returned!
+            return best_target  # The best group is being returned!
 
-    def backward(self, e, time):
+    def backward(self, time: int):
+        current_error: torch.Tensor = self.error
 
-        if not self.at[time].is_sleeping :
-            # Source backprop :
-            for group, source in self.from_conns.items():
+        if not self.at(time).is_sleeping:  # Back-prop only when this group was active at that time!
 
-                if group.error is None : group.error = source.backward(e)
-                else : group.error = group.error + source.backward(e)
+            # Multiplying with the parial derivative of the activation of this group.
+            current_error = current_error * self.at(time).derivative
 
-            # Route backprop :
-            for group, route in self.to_conns.items():
+            # Source (error) bac-prop :
+            for group, source in self.from_conns.items():  # Distributing error to source groups...
 
-                g_h, g_r = route.backward(e, time)
+                g_s = source.backward(
+                    e_s=current_error,
+                    s=group.at(time).state  # Needed to calculate gradients of the weights!
+                )
 
-                if group.error is None : group.error = g_r
-                else : group.error = group.error + g_r
+                if group.error is None:
+                    group.error = g_s  # setting or accumulating the error!
+                else:
+                    group.error = group.error + g_s
+                group.error_count += 1
+
+            # Route (error) back-prop :
+            for group, route in self.to_conns.items():  # Distributing error to route groups...
+
+                g_h, g_r = route.backward(
+                    e_c=current_error,
+                    time=time,
+                    r=route.at(time).state,  # Needed to calculate gradients of the weights!
+                    h=self.at(time).state  # Needed to calculate gradients of the weights!
+                )
+
+                if group.error is None:
+                    group.error = g_r  # setting or accumulating the error!
+                else:
+                    group.error = group.error + g_r
+                group.error_count += 1
+
+                # Accumulating g_h to self:
+                if self.error is None:
+                    self.error = g_h
+                else:
+                    self.error = self.error + g_h
+                # self.error_count += 1
 
             # Source Group backprop :
             for group, source in self.from_conns.items():
-                group.backward(self.at[time].derivative, time-1)
+                group.backward(time - 1)
 
             # Route Groupe backprop :
             for group, route in self.to_conns.items():
-                group.backward(self.at[time].derivative, time - 1)
-
-
+                group.backward(time - 1)
 
     def activation(self, x, derive=False):  # State of the Art activation function, SWISH
-        if derive : return torch.sigmoid(x)
-        else : return torch.sigmoid(x) * x
-        #return x * torch.tanh(nn.functional.softplus(x)) # MISH might also be interesting
+        if derive:
+            return torch.sigmoid(x)
+        else:
+            return torch.sigmoid(x) * x
+        # return x * torch.tanh(nn.functional.softplus(x)) # MISH might also be interesting
+
+
+# TESTING:
+
+group = Group(index=0, dimensionality=3)
+
+assert group.index == 0
+assert group.dimensionality == 3
+assert group.from_conns != None
+assert group.to_conns != None
+assert group.targets == []  # indices of targeted routes!
+assert group.error == None
+assert group.error_count == 0
+assert group.at != None
+
+other1 = Group(index=0,dimensionality=3)
+other2 = Group(index=1,dimensionality=3)
+
+group.connect_forward(next_groups=[other1,other2], cone_size=293943, step=1)
+
+assert len(group.from_conns) == 0
+assert len(group.to_conns) == 2
+assert len(other1.from_conns) == 1
+assert len(other2.from_conns) == 1
+assert len(other1.to_conns) == 0
+assert len(other2.to_conns) == 0
+
+group.start_with(torch.tensor([[1.0, 2.0, 3.0]]))
+groups = [group, other1, other2]
+for g in groups: g.forward(0)
+
+assert not other1.at(1).is_sleeping
+assert other2.at(1).is_sleeping
+
+del group
 
 
 # ----------------------------------------------------------------------------------------------------------------------#
@@ -239,22 +372,22 @@ class Group:
 
 class Capsule:
 
-    def __init__(self, dimensionality, size):
+    def __init__(self, dimensionality, size: int):
         self.groups = []
-        for i in range(size):
+        for i in range(size):  # creating "size" number of groups for this capsule
             self.groups.append(Group(i, dimensionality))
 
     # IO :
 
-    def getParams(self):
+    def get_params(self):
         params = []
         for group in self.groups:
-            params.extend(group.getParams())
+            params.extend(group.get_params())
         return params
 
     def str(self, level):
         asStr = level + 'Capsule: {\n'
-        asStr += (level +'   height: ' + str(len(self.groups)) + '\n')
+        asStr += (level + '   height: ' + str(len(self.groups)) + '\n')
         for group in self.groups:
             asStr += group.str(level + '   ')
         asStr += ('\n' + level + '};\n')
@@ -287,7 +420,7 @@ class Network:
                  max_cone=39,
                  D_in=100,
                  D_out=10,
-        ):
+                 ):
         assert depth > 3
         dims = [math.floor(float(x)) for x in self.girth_from(depth, D_in, max_dim, D_out)]
         heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
@@ -302,10 +435,6 @@ class Network:
                 current_cone = min(len(self._capsules[i + 1].groups), max_cone)
                 step = max(1, int(len(self._capsules[i + 1].groups) / current_cone))
                 self._capsules[i].connect_forward(self._capsules[i + 1], current_cone, step)
-
-        #self._sub_modules = torch.nn.ModuleList([])
-        #for
-            
 
     def str(self):
         asStr = ''
@@ -332,7 +461,8 @@ class Network:
                     g.append((end * ratio) + max * (1 - ratio))
         return g
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # TESTING :
 
 net = Network(
@@ -343,7 +473,7 @@ net = Network(
     D_in=100,
     D_out=10,
 )
-#print(net.str())
+# print(net.str())
 
 expected_structure = [
     {
@@ -401,16 +531,16 @@ expected_structure = [
 
 assert len(net._capsules) == len(expected_structure)
 
-for ci in range(len(net._capsules)) :
+for ci in range(len(net._capsules)):
     expected_capsule = expected_structure[ci]
     given_capsule = net._capsules[ci]
     assert expected_capsule['height'] == len(given_capsule.groups)
     for gi in range(len(given_capsule.groups)):
         given_group = given_capsule.groups[gi]
         assert given_group.targets == expected_capsule['targets'][gi]
-        if isinstance(expected_capsule['from'],list):
+        if isinstance(expected_capsule['from'], list):
             assert len(given_group.from_conns) == expected_capsule['from'][gi]
-        else :
+        else:
             assert len(given_group.from_conns) == expected_capsule['from']
         assert len(given_group.to_conns) == expected_capsule['to']
 
@@ -422,4 +552,4 @@ net = Network(
     D_in=100,
     D_out=10,
 )
-#print(net.str())
+# print(net.str())
