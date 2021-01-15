@@ -276,7 +276,7 @@ class Group(Recorder):
 
         if not self.at(time).is_sleeping:  # Back-prop only when this group was active at that time!
 
-            # Multiplying with the parial derivative of the activation of this group.
+            # Multiplying with the partial derivative of the activation of this group.
             current_error = current_error * self.at(time).derivative
 
             # Source (error) bac-prop :
@@ -363,6 +363,8 @@ for g in groups: g.forward(0)
 
 assert not other1.at(1).is_sleeping
 assert other2.at(1).is_sleeping
+
+assert [r.at(0).g for r in group.to_conns.values()] == [0.9598161578178406, 0.5216401815414429]
 
 del group
 
