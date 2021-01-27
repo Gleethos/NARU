@@ -1,8 +1,11 @@
 import math
 from collections import defaultdict
+import threading
+
+CONTEXT = threading.local()
+CONTEXT.recorders = []
 
 import torch
-import torch.nn as nn
 
 torch.manual_seed(666)
 
@@ -26,7 +29,13 @@ def sig(x, derive=False):
 
 class Recorder:
     def __init__(self, default_lambda):
-        self.history: dict = defaultdict(default_lambda)  # history
+        self.default_lambda = default_lambda
+        self.history: dict = None  # history
+        self.reset()
+        CONTEXT.recorders.append(self)
+
+    def reset(self):
+        self.history: dict = defaultdict(self.default_lambda)  # history
 
     def at(self, time: int):
         is_record = self.history[time].is_record
@@ -87,24 +96,26 @@ class Route(Recorder):
 
 # TESTING:
 
+torch.manual_seed(66642999)
+
 route = Route(D_in=3, D_out=2)
 r = torch.ones(1, 3)
 h = torch.ones(1, 2)
 
 c = route.forward(h, r, 0)
-assert str(c) == 'tensor([[-3.0741, -0.0344]])'
+assert str(c) == 'tensor([[ 0.1663, -0.0411]])'
 
 g_h, g_r = route.backward(
     torch.tensor([[-1.0, 1.0]]), 0,
     h=torch.tensor([[2.0, -3.0]]),
     r=torch.tensor([[-1.0, 4.0, 2.0]])
 )
-assert str(g_h) == 'tensor([[1.3836, 0.2425]])'
-assert str(g_r) == 'tensor([[1.8145, 0.9111, 0.1612]])'
+assert str(g_h) == 'tensor([[-0.0995,  0.1821]])'
+assert str(g_r) == 'tensor([[ 1.0981, -2.0502,  0.3621]])'
 
-assert str(route.Wgh.grad) == "tensor([[ 1.0678],\n        [-1.6017]])"
-assert str(route.Wgr.grad) == "tensor([[-0.5339],\n        [ 2.1356],\n        [ 1.0678]])"
-assert str(route.Wr.grad) == "tensor([[ 0.8244, -0.8244],\n        [-3.2974,  3.2974],\n        [-1.6487,  1.6487]])"
+assert str(route.Wgh.grad) == "tensor([[-0.2689],\n        [ 0.4033]])"
+assert str(route.Wgr.grad) == "tensor([[ 0.1344],\n        [-0.5378],\n        [-0.2689]])"
+assert str(route.Wr.grad) == "tensor([[ 0.3515, -0.3515],\n        [-1.4062,  1.4062],\n        [-0.7031,  0.7031]])"
 
 del route, r, h, c, g_r, g_h
 
@@ -128,9 +139,6 @@ class Source(Recorder):
         return s.matmul(self.Ws)
 
     def backward(self, e_s: torch.Tensor, s: torch.Tensor):
-        print(s.shape)
-        print(e_s.shape)
-        print(self.Ws.shape)
         self.Ws.grad += s.T.matmul(e_s)
         return e_s.matmul(self.Ws.T)
 
@@ -138,16 +146,16 @@ class Source(Recorder):
 
 # TESTING:
 
+torch.manual_seed(66642999)
+
 source = Source(D_in=2, D_out=3)
 s = torch.ones(1, 2)
 c = source.forward(s)
-
-assert str(c) == 'tensor([[-0.3784,  0.7585, -0.2807]])'# shape=(1,3)
+assert str(c) == 'tensor([[-2.4602,  1.0154,  1.8009]])' # shape=(1,3)
 
 e = torch.ones(1, 3)
-e_c = source.backward(e, s=torch.tensor([[2.0, -1.0]])) #shape=(1,2)
-
-assert str(e_c) == 'tensor([[ 1.2484, -1.1490]])'#shape=(1,2)
+e_c = source.backward(e, s=torch.tensor([[2.0, -1.0]])) # shape=(1,2)
+assert str(e_c) == 'tensor([[-0.3409,  0.6971]])' # shape=(1,2)
 assert str(source.Ws.grad) == "tensor([[ 2.,  2.,  2.],\n        [-1., -1., -1.]])"
 
 del s, c, e, e_c
@@ -156,7 +164,7 @@ del s, c, e, e_c
 # ----------------------------------------------------------------------------------------------------------------------#
 # GROUP
 
-# A moment holds information about a concrete moment in time t!
+# A moment holds information about a concrete point in time step t!
 # This is important for back-propagation
 def default_moment(dimensionality: int):
     m = Moment()
@@ -279,6 +287,10 @@ class Group(Recorder):
             # Multiplying with the partial derivative of the activation of this group.
             current_error = current_error * self.at(time).derivative
 
+            assert self.error_count > 0 # This node should already have an error! (because of route connection...)
+            # Normalization technique so that gradients do not explode:
+            current_error = current_error / self.error_count
+
             # Source (error) bac-prop :
             for group, source in self.from_conns.items():  # Distributing error to source groups...
 
@@ -291,7 +303,7 @@ class Group(Recorder):
                     group.error = g_s  # setting or accumulating the error!
                 else:
                     group.error = group.error + g_s
-                group.error_count += 1
+                group.error_count += 1 #-> incrementing the counter! (for normalization)
 
             # Route (error) back-prop :
             for group, route in self.to_conns.items():  # Distributing error to route groups...
@@ -307,14 +319,14 @@ class Group(Recorder):
                     group.error = g_r  # setting or accumulating the error!
                 else:
                     group.error = group.error + g_r
-                group.error_count += 1
+                group.error_count += 1 #-> incrementing the counter! (for normalization)
 
                 # Accumulating g_h to self:
                 if self.error is None:
                     self.error = g_h
                 else:
                     self.error = self.error + g_h
-                # self.error_count += 1
+                self.error_count += 1 #-> incrementing the counter! (for normalization)
 
             # Source Group backprop :
             for group, source in self.from_conns.items():
@@ -334,6 +346,8 @@ class Group(Recorder):
 
 # TESTING:
 
+torch.manual_seed(66642999)
+
 group = Group(index=0, dimensionality=3)
 
 assert group.index == 0
@@ -348,6 +362,7 @@ assert group.at != None
 other1 = Group(index=0,dimensionality=3)
 other2 = Group(index=1,dimensionality=3)
 
+# connecting them...
 group.connect_forward(next_groups=[other1,other2], cone_size=293943, step=1)
 
 assert len(group.from_conns) == 0
@@ -363,10 +378,11 @@ for g in groups: g.forward(0)
 
 assert not other1.at(1).is_sleeping
 assert other2.at(1).is_sleeping
+assert [r.at(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
-assert [r.at(0).g for r in group.to_conns.values()] == [0.9598161578178406, 0.5216401815414429]
+for g in groups: g.forward(1)
 
-del group
+del group, other1, other2
 
 
 # ----------------------------------------------------------------------------------------------------------------------#
@@ -466,6 +482,8 @@ class Network:
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # TESTING :
+
+torch.manual_seed(66642999)
 
 net = Network(
     depth=5,
