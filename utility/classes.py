@@ -2,6 +2,7 @@
 from collections import defaultdict
 import threading
 import torch
+import copy
 
 CONTEXT = threading.local()
 CONTEXT.recorders = []
@@ -27,8 +28,7 @@ def sig(x, derive=False):
 # HISTORY BASE CLASS
 
 class Recorder:
-    def __init__(self, default_lambda, progression_lambda=None):
-        self.progression_lambda = progression_lambda
+    def __init__(self, default_lambda):
         self.default_lambda = default_lambda
         self.history: dict = None  # history
         self.reset()
@@ -37,22 +37,28 @@ class Recorder:
     def reset(self):
         self.history: dict = defaultdict(self.default_lambda)  # history
 
-    def at(self, time: int):
+    def latest(self, time: int):
         moment = self.history[time]
         is_record = moment.is_record
         while not is_record:
             time -= 1
-            is_record = self.history[time].is_record
+            moment = self.history[time]
+            is_record = moment.is_record
             if time < 0 : # first time step is recorded by default!
                 self.history[0] = self.history[0]
-                self.history[0].is_recorded = True
+                self.history[0].is_record = True
                 return self.history[0]
-        if self.progression_lambda is not None:
-            return self.progression_lambda(self.history[time],moment)
+        #if hasattr(moment, 'state'):
+        #    print(moment.state)
+        return self.history[time]
+
+    def at(self, time:int):
         return self.history[time]
 
     def rec(self, time: int):
-        self.history[time] = self.history[time]  # new entry (new Moment object)
+        current = self.history[time]
+        if not current.is_record:
+            self.history[time] = copy.copy(self.latest(time))  # new entry (new Moment object)
         self.history[time].is_record = True
         return self.history[time]
 
@@ -82,13 +88,13 @@ class Route(Recorder):
         g = sig(g)
         self.rec(time).g = g.mean().item()  # g is used for routing!
         self.rec(time).z = r.matmul(self.Wr)
-        c = g * self.at(time).z
+        c = g * self.latest(time).z
         return c
 
     def backward(self, e_c, time, r, h):
-        self.Wr.grad += r.T.matmul(e_c * self.at(time).g)
+        self.Wr.grad += r.T.matmul(e_c * self.latest(time).g)
         g_r = e_c.matmul(self.Wr.T)
-        e_g = e_c.matmul(self.at(time).z.T) * self.at(time).pd_g
+        e_g = e_c.matmul(self.latest(time).z.T) * self.latest(time).pd_g
         self.Wgr.grad += r.T.matmul(e_g)
         self.Wgh.grad += h.T.matmul(e_g)
         g_r += e_g.matmul(self.Wgr.T)
@@ -193,6 +199,7 @@ def default_moment(dimensionality: int):
 # The Recorder instance will find the most recent record wehn calling the "at" method...
 # However some properties might not be reflective of the true current (non record) moment!
 def default_progression(older : Moment, moment : Moment):
+    #assert not moment.is_record
     new = Moment()
     new.state = older.state
     new.derivative = older.derivative
@@ -205,7 +212,7 @@ def default_progression(older : Moment, moment : Moment):
 class Group(Recorder):
 
     def __init__(self, index: int, dimensionality: int):
-        super().__init__(default_lambda=lambda: default_moment(dimensionality), progression_lambda=default_progression)
+        super().__init__(default_lambda=lambda: default_moment(dimensionality))
         self.from_conns = dict()
         self.to_conns = dict()
         self.index = index
@@ -218,11 +225,13 @@ class Group(Recorder):
     # IO :
 
     def add_error(self, e, time):
-        if self.at(time).error is None:
+        moment = self.latest(time)
+        if moment.error is None:
             self.rec(time).error = e
+            self.rec(time).error_count = moment.error_count + 1  # -> incrementing the counter! (for normalization)
         else:
-            self.rec(time).error = self.at(time).error + e
-        self.rec(time).error_count = self.at(time) + 1 #-> incrementing the counter! (for normalization)
+            moment.error = moment.error + e
+            moment.error_count = moment + 1 #-> incrementing the counter! (for normalization)
 
     def get_params(self):
         params = []
@@ -271,16 +280,17 @@ class Group(Recorder):
         if not self.at(time).is_sleeping or this_is_start:
             z = None
             if this_is_start:
-                z = self.at(time).state  # Start group!
+                z = self.latest(time).state  # Start group!
+                print(str(z))
                 assert z is not None
 
             # Source activations :
             for group, source in self.from_conns.items():
 
                 if z is None:
-                    z = source.forward(group.at(time).state)
+                    z = source.forward(group.latest(time).state)
                 else:
-                    z = z + source.forward(group.at(time).state)
+                    z = z + source.forward(group.latest(time).state)
 
             # Route activations :
             best_target = None
@@ -288,14 +298,14 @@ class Group(Recorder):
             for group, route in self.to_conns.items():
 
                 if z is None:
-                    z = route.forward(self.at(time).state, group.at(time).state, time)
+                    z = route.forward(self.latest(time).state, group.latest(time).state, time)
                 else:
-                    z = z + route.forward(self.at(time).state, group.at(time).state, time)
+                    z = z + route.forward(self.latest(time).state, group.latest(time).state, time)
 
                 # Checking if this route is better than another :
-                print('Route Gate:',route.at(time).g,'>?>',best_score)
-                if route.at(time).g > best_score:
-                    best_score = route.at(time).g
+                print('Route Gate:', route.latest(time).g, '>?>', best_score)
+                if route.latest(time).g > best_score:
+                    best_score = route.latest(time).g
                     best_target = group
 
             if len(self.to_conns.items()) > 0:
@@ -316,12 +326,12 @@ class Group(Recorder):
             return best_target  # The best group is being returned!
 
     def backward(self, time: int):
-        current_error: torch.Tensor = self.error
+        current_error: torch.Tensor = self.latest(time).error
 
         if not self.at(time).is_sleeping:  # Back-prop only when this group was active at that time!
 
             # Multiplying with the partial derivative of the activation of this group.
-            current_error = current_error * self.at(time).derivative
+            current_error = current_error * self.latest(time).derivative
 
             assert self.error_count > 0 # This node should already have an error! (because of route connection...)
             # Normalization technique so that gradients do not explode:
@@ -332,9 +342,9 @@ class Group(Recorder):
 
                 g_s = source.backward(
                     e_s=current_error,
-                    s=group.at(time).state  # Needed to calculate gradients of the weights!
+                    s=group.latest(time).state  # Needed to calculate gradients of the weights!
                 )
-                group.add_error(g_s) # setting or accumulating the error!
+                group.add_error(g_s, time) # setting or accumulating the error!
 
             # Route (error) back-prop :
             for group, route in self.to_conns.items():  # Distributing error to route groups...
@@ -342,19 +352,19 @@ class Group(Recorder):
                 g_h, g_r = route.backward(
                     e_c=current_error,
                     time=time,
-                    r=route.at(time).state,  # Needed to calculate gradients of the weights!
-                    h=self.at(time).state  # Needed to calculate gradients of the weights!
+                    r=route.latest(time).state,  # Needed to calculate gradients of the weights!
+                    h=self.latest(time).state  # Needed to calculate gradients of the weights!
                 )
-                group.add_error(g_r)
+                group.add_error(g_r, time)
 
                 # Accumulating g_h to self:
-                self.add_error(g_h)
+                self.add_error(g_h, time)
 
             # Source Group backprop :
             for group, source in self.from_conns.items():
                 group.backward(time - 1)
 
-            # Route Groupe backprop :
+            # Route Group backprop :
             for group, route in self.to_conns.items():
                 group.backward(time - 1)
 
@@ -392,10 +402,10 @@ def test_simple_net(group, other1, other2, output):
     groups = [group, other1, other2, output]
     for g in groups: g.forward(0)
 
-    assert not other1.at(1).is_sleeping # CHOICE: other1
-    assert other2.at(1).is_sleeping
-    assert output.at(1).is_sleeping
-    assert [r.at(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
+    assert not other1.latest(1).is_sleeping # CHOICE: other1
+    assert other2.latest(1).is_sleeping
+    assert output.latest(1).is_sleeping
+    assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
     # Future states don't know anything:
     assert other1.at(2).is_sleeping
@@ -407,20 +417,25 @@ def test_simple_net(group, other1, other2, output):
 
     assert not other1.at(1).is_sleeping # first step is still recorded...
     assert other2.at(1).is_sleeping
-    assert [r.at(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
+    assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
+    print([r.latest(1).g for r in group.to_conns.values()])
     assert other1.at(2).is_sleeping # New step as well!
     assert not other2.at(2).is_sleeping # CHOICE: other2
     assert not output.at(2).is_sleeping
-    assert [r.at(1).g for r in group.to_conns.values()] == [0.881648063659668, 0.9996621608734131]
-    assert [r.at(1).g for r in other1.to_conns.values()] == [0.5]
+    assert [r.latest(1).g for r in group.to_conns.values()] == [0.881648063659668, 0.9996621608734131]
+    assert [r.latest(1).g for r in other1.to_conns.values()] == [0.5]
 
     #last activation (activates output)
     for g in groups: g.forward(2)
-    for g in groups: assert g.at(0).error_count == 0
+    for g in groups: assert g.latest(0).error_count == 0
 
-    #output.add_error(torch.tensor([[1]]))
-    #assert output.error_count == 1
+    output.add_error(torch.tensor([[1]]),2)
+    assert output.latest(1).error_count == 0
+    assert output.latest(2).error_count == 1
+    assert output.latest(3).error_count == 0
+    #for g in groups: g.backward(2)
+
 
 
 
@@ -431,9 +446,9 @@ assert group.dimensionality == 3
 assert group.from_conns != None
 assert group.to_conns != None
 assert group.targets == []  # indices of targeted routes!
-assert group.at(0).error == None
-assert group.at(0).error_count == 0
-assert group.at != None
+assert group.latest(0).error == None
+assert group.latest(0).error_count == 0
+assert group.latest != None
 
 other1 = Group(index=0,dimensionality=3)
 other2 = Group(index=1,dimensionality=3)
