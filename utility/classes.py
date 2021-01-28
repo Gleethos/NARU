@@ -231,7 +231,7 @@ class Group(Recorder):
             self.rec(time).error_count = moment.error_count + 1  # -> incrementing the counter! (for normalization)
         else:
             moment.error = moment.error + e
-            moment.error_count = moment + 1 #-> incrementing the counter! (for normalization)
+            moment.error_count = moment.error_count + 1 #-> incrementing the counter! (for normalization)
 
     def get_params(self):
         params = []
@@ -333,9 +333,9 @@ class Group(Recorder):
             # Multiplying with the partial derivative of the activation of this group.
             current_error = current_error * self.latest(time).derivative
 
-            assert self.error_count > 0 # This node should already have an error! (because of route connection...)
+            assert self.latest(time).error_count > 0 # This node should already have an error! (because of route connection...)
             # Normalization technique so that gradients do not explode:
-            current_error = current_error / self.error_count
+            current_error = current_error / self.latest(time).error_count
 
             # Source (error) bac-prop :
             for group, source in self.from_conns.items():  # Distributing error to source groups...
@@ -344,7 +344,7 @@ class Group(Recorder):
                     e_s=current_error,
                     s=group.latest(time).state  # Needed to calculate gradients of the weights!
                 )
-                group.add_error(g_s, time) # setting or accumulating the error!
+                group.add_error(g_s, time - 1) # setting or accumulating the error!
 
             # Route (error) back-prop :
             for group, route in self.to_conns.items():  # Distributing error to route groups...
@@ -352,13 +352,13 @@ class Group(Recorder):
                 g_h, g_r = route.backward(
                     e_c=current_error,
                     time=time,
-                    r=route.latest(time).state,  # Needed to calculate gradients of the weights!
+                    r=group.latest(time).state,  # Needed to calculate gradients of the weights!
                     h=self.latest(time).state  # Needed to calculate gradients of the weights!
                 )
-                group.add_error(g_r, time)
+                group.add_error(g_r, time - 1)
 
                 # Accumulating g_h to self:
-                self.add_error(g_h, time)
+                self.add_error(g_h, time - 1)
 
             # Source Group backprop :
             for group, source in self.from_conns.items():
@@ -429,12 +429,15 @@ def test_simple_net(group, other1, other2, output):
     #last activation (activates output)
     for g in groups: g.forward(2)
     for g in groups: assert g.latest(0).error_count == 0
-
+    assert str(output.at(2).state) == 'tensor([[-0.2231]])'
     output.add_error(torch.tensor([[1]]),2)
     assert output.latest(1).error_count == 0
     assert output.latest(2).error_count == 1
     assert output.latest(3).error_count == 0
-    #for g in groups: g.backward(2)
+
+    output.backward(2)
+
+    print('Hi')
 
 
 
