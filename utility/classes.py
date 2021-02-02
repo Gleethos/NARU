@@ -72,8 +72,10 @@ class Route(Recorder):
         D_h = D_out
         self.Wr = torch.randn(D_in, D_out)
         self.Wr.grad = torch.zeros(D_in, D_out)
+
         self.Wgh = torch.randn(D_h, 1)
         self.Wgh.grad = torch.zeros(D_h, 1)
+
         self.Wgr = torch.randn(D_in, 1)
         self.Wgr.grad = torch.zeros(D_in, 1)
         self.pd_g: torch.Tensor = None  # the partial derivative of g
@@ -437,10 +439,25 @@ def test_simple_net(group, other1, other2, output):
 
     output.backward(2)
 
-    print('Hi')
+    grad = str(next(iter(other1.from_conns.values())).Ws.grad)
+    assert grad in [
+        'tensor([[-0.0120,  0.1165, -1.7304],\n        [-0.0040,  0.0388, -0.5768],\n        [-0.0160,  0.1553, -2.3073]])',
+        'tensor([[-0.0060,  0.0582, -0.8652],\n        [-0.0020,  0.0194, -0.2884],\n        [-0.0080,  0.0776, -1.1536]])'
+    ]
+    grad = str(next(iter(other2.from_conns.values())).Ws.grad)
+    assert grad == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
 
+    assert str(next(iter(group.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
+    assert str(next(iter(group.to_conns.values())).Wgr.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
+    assert str(next(iter(group.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
 
+    assert str(next(iter(other1.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
+    assert str(next(iter(other1.to_conns.values())).Wgr.grad) == 'tensor([[0.]])'
+    assert str(next(iter(other1.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.]])'
 
+    assert str(next(iter(other2.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
+    assert str(next(iter(other2.to_conns.values())).Wgr.grad) == 'tensor([[0.]])'
+    assert str(next(iter(other2.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.]])'
 
 group = Group(index=0, dimensionality=3)
 
