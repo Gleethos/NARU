@@ -84,8 +84,7 @@ class Route(Recorder):
         return [self.Wr, self.Wgr, self.Wgh]
 
     def forward(self, h: torch.Tensor, r: torch.Tensor, time):
-        g = r.matmul(self.Wgr)
-        if h is not None: g = h.matmul(self.Wgh) + g
+        g = r.matmul(self.Wgr) + h.matmul(self.Wgh)
         self.rec(time).pd_g = sig(g, derive=True)
         g = sig(g)
         self.rec(time).g = g.mean().item()  # g is used for routing!
@@ -198,19 +197,6 @@ def default_moment(dimensionality: int):
     m.error_count = 0
     return m
 
-# The Recorder instance will find the most recent record wehn calling the "at" method...
-# However some properties might not be reflective of the true current (non record) moment!
-def default_progression(older : Moment, moment : Moment):
-    #assert not moment.is_record
-    new = Moment()
-    new.state = older.state
-    new.derivative = older.derivative
-    new.is_sleeping = moment.is_sleeping
-    new.error = older.error
-    new.error_count = older.error_count
-    return new
-
-
 class Group(Recorder):
 
     def __init__(self, index: int, dimensionality: int):
@@ -219,10 +205,10 @@ class Group(Recorder):
         self.to_conns = dict()
         self.index = index
         self.dimensionality = dimensionality
-
         self.targets = []  # indices of targeted routes! (routes to groups)
-        #self.error = None  # the current accumulated error
-        #self.error_count = 0  # the number of errors summed up within the current accumulated error
+
+    def nid(self):
+        return 'i'+str(self.index)+'f'+str(len(self.from_conns))+'t'+str(len(self.to_conns))+'d'+str(self.dimensionality)
 
     # IO :
 
@@ -270,10 +256,10 @@ class Group(Recorder):
 
     # Execution :
 
-    def start_with(self, x: torch.Tensor):
+    def start_with(self, time, x: torch.Tensor):
         this_is_start = len(self.from_conns) == 0
         assert this_is_start
-        self.rec(0).state = x
+        self.rec(time-1).state = x
 
     def forward(self, time: int):
         assert time >= 0
@@ -283,29 +269,31 @@ class Group(Recorder):
             z = None
             if this_is_start:
                 z = self.latest(time).state  # Start group!
-                print(str(z))
+                print('Starting with: ',str(z))
                 assert z is not None
 
             # Source activations :
             for group, source in self.from_conns.items():
-
+                s = group.latest(time-1).state
+                print(self.nid() + ' - t' + str(time), ': s=' + str(s))
                 if z is None:
-                    z = source.forward(group.latest(time).state)
+                    z = source.forward(s)
                 else:
-                    z = z + source.forward(group.latest(time).state)
+                    z = z + source.forward(s)
 
             # Route activations :
             best_target = None
             best_score = 0
             for group, route in self.to_conns.items():
-
+                h, r = self.latest(time-1).state, group.latest(time-1).state
+                print(self.nid()+' - t'+str(time),': h='+str(h),'r='+str(r))
                 if z is None:
-                    z = route.forward(self.latest(time).state, group.latest(time).state, time)
+                    z = route.forward(h, r, time)
                 else:
-                    z = z + route.forward(self.latest(time).state, group.latest(time).state, time)
+                    z = z + route.forward(h, r, time)
 
                 # Checking if this route is better than another :
-                print('Route Gate:', route.latest(time).g, '>?>', best_score)
+                #print('Route Gate:', route.latest(time).g, '>?>', best_score)
                 if route.latest(time).g > best_score:
                     best_score = route.latest(time).g
                     best_target = group
@@ -322,8 +310,8 @@ class Group(Recorder):
             if not this_is_start:
                 self.rec(time).state = self.activation(z)  # If this is not the start of the network... : Activate!
                 self.rec(time).derivative = self.activation(z, derive=True)
-            else:
-                self.rec(time).state = z
+            #else:
+            #    self.rec(time).state = z
 
             return best_target  # The best group is being returned!
 
@@ -398,9 +386,9 @@ def test_simple_net(group, other1, other2, output):
     assert len(other2.to_conns) == 1
     assert len(output.from_conns) == 2
     assert len(output.to_conns) == 0
-    assert len(CONTEXT.recorders) == 4 + 2 + 2 + 2 + 2# four groups and 6 connections
+    assert len(CONTEXT.recorders) == 4 + 2 + 2 + 2 + 2 # four groups and 6 connections
 
-    group.start_with(torch.tensor([[1.0, 2.0, 3.0]]))
+    group.rec(-1).state = torch.tensor([[1.0, 2.0, 3.0]])
     groups = [group, other1, other2, output]
     for g in groups: g.forward(0)
 
@@ -414,7 +402,7 @@ def test_simple_net(group, other1, other2, output):
     assert other2.at(2).is_sleeping
     assert output.at(2).is_sleeping
 
-    group.start_with(torch.tensor([[-3.0, -1.0, -4.0]]))
+    group.rec(0).state = torch.tensor([[-3.0, -1.0, -4.0]])
     for g in groups: g.forward(1)
 
     assert not other1.at(1).is_sleeping # first step is still recorded...
@@ -429,20 +417,23 @@ def test_simple_net(group, other1, other2, output):
     assert [r.latest(1).g for r in other1.to_conns.values()] == [0.5]
 
     #last activation (activates output)
+    group.rec(1).state = torch.tensor([[2.0, 4.0, -1.0]])
     for g in groups: g.forward(2)
     for g in groups: assert g.latest(0).error_count == 0
-    assert str(output.at(2).state) == 'tensor([[-0.2231]])'
+    print(str(output.at(2).state))
+    assert str(output.at(2).state) == 'tensor([[5.1944]])'#'tensor([[-0.2231]])'
     output.add_error(torch.tensor([[1]]),2)
     assert output.latest(1).error_count == 0
     assert output.latest(2).error_count == 1
     assert output.latest(3).error_count == 0
 
-    output.backward(2)
+    output.backward(2) # backprop happens recursively!
 
     grad = str(next(iter(other1.from_conns.values())).Ws.grad)
+    print(grad)
     assert grad in [
-        'tensor([[-0.0120,  0.1165, -1.7304],\n        [-0.0040,  0.0388, -0.5768],\n        [-0.0160,  0.1553, -2.3073]])',
-        'tensor([[-0.0060,  0.0582, -0.8652],\n        [-0.0020,  0.0194, -0.2884],\n        [-0.0080,  0.0776, -1.1536]])'
+        'tensor([[ 0.0116, -0.1126,  1.6734],\n        [ 0.0231, -0.2252,  3.3468],\n        [-0.0058,  0.0563, -0.8367]])',
+        'tensor([[ 0.0231, -0.2252,  3.3468],\n        [ 0.0463, -0.4505,  6.6936],\n        [-0.0116,  0.1126, -1.6734]])'
     ]
     grad = str(next(iter(other2.from_conns.values())).Ws.grad)
     assert grad == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
@@ -458,6 +449,8 @@ def test_simple_net(group, other1, other2, output):
     assert str(next(iter(other2.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
     assert str(next(iter(other2.to_conns.values())).Wgr.grad) == 'tensor([[0.]])'
     assert str(next(iter(other2.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.]])'
+
+
 
 group = Group(index=0, dimensionality=3)
 

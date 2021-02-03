@@ -38,11 +38,11 @@ class Capsule:
 
     # Execution :
 
-    def start_with(self, x):
+    def start_with(self, time, x):
         # This is only allowed to be called
         # on first capsule of the network !
         assert len(self.groups) == 1
-        for group in self.groups: group.start_with(x)
+        for group in self.groups: group.rec(time).state = x
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
