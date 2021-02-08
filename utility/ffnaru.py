@@ -1,5 +1,7 @@
 
 from utility.classes import Group
+from utility.classes import Loss
+from utility.classes import CONTEXT
 import math
 import torch
 
@@ -13,6 +15,10 @@ class Capsule:
         self.groups = []
         for i in range(size):  # creating "size" number of groups for this capsule
             self.groups.append(Group(i, dimensionality))
+
+    def forward(self, time):
+        for group in self.groups:
+            group.forward(time)
 
     # IO :
 
@@ -58,6 +64,7 @@ class Network:
                  D_in=100,
                  D_out=10,
                  ):
+        self.loss = Loss()
         assert depth > 3
         dims = [math.floor(float(x)) for x in self.girth_from(depth, D_in, max_dim, D_out)]
         heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
@@ -97,6 +104,20 @@ class Network:
                     ratio = (i - mid) / mid
                     g.append((end * ratio) + max * (1 - ratio))
         return g
+
+    def forward(self, vectors):
+        in_group = self._capsules[0]
+        out_group = self._capsules[len(self._capsules)-1].groups[0]
+        for time, token in enumerate(vectors):
+            if time < len(vectors)-1:
+                in_group.start_with(time, token)
+                for capsule in self._capsules:
+                    capsule.forward(time)
+
+                e = self.loss(out_group.latest(time).state, )
+                out_group.add_error(e,time)
+
+        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
 
 
 # TESTING :

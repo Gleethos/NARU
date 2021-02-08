@@ -104,6 +104,7 @@ class Route(Recorder):
 
 
 print('Route loaded! Unit-Testing now...')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # TESTING:
 
 torch.manual_seed(66642999)
@@ -160,8 +161,9 @@ class Source(Recorder):
         return e_s.matmul(self.Ws.T)
 
 
-# TESTING:
 print('Source loaded! Unit-Testing now...')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# TESTING:
 
 torch.manual_seed(66642999)
 
@@ -310,8 +312,6 @@ class Group(Recorder):
             if not this_is_start:
                 self.rec(time).state = self.activation(z)  # If this is not the start of the network... : Activate!
                 self.rec(time).derivative = self.activation(z, derive=True)
-            #else:
-            #    self.rec(time).state = z
 
             return best_target  # The best group is being returned!
 
@@ -358,6 +358,7 @@ class Group(Recorder):
             for group, route in self.to_conns.items():
                 group.backward(time - 1)
 
+
     def activation(self, x, derive=False):  # State of the Art activation function, SWISH
         if derive:
             return sig(x)
@@ -367,6 +368,7 @@ class Group(Recorder):
 
 
 print('Group loaded! Unit-Testing now...')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # TESTING:
 
 torch.manual_seed(66642999)
@@ -476,3 +478,22 @@ del group, other1, other2, output
 CONTEXT.recorders = []
 print('Group Unit-Testing successful!')
 print('==============================\n')
+
+# -----------------------------------------
+
+
+class Loss:
+
+    def __init__(self):
+        self.loss = torch.nn.MSELoss()
+
+    def __call__(self, tensor : torch.Tensor, target : torch.Tensor):
+        clone = tensor.clone()
+        clone.requires_grad = True
+        self.loss(clone, target).backward()
+        return clone.grad
+
+
+
+
+
