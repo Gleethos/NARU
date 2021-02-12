@@ -11,10 +11,10 @@ import torch
 
 class Capsule:
 
-    def __init__(self, dimensionality, size: int):
+    def __init__(self, dimensionality, size: int, position=None):
         self.groups = []
         for i in range(size):  # creating "size" number of groups for this capsule
-            self.groups.append(Group(i, dimensionality))
+            self.groups.append(Group(i, dimensionality, position))
 
     def forward(self, time):
         for group in self.groups:
@@ -65,13 +65,14 @@ class Network:
                  D_out=10,
                  ):
         self.loss = Loss()
+        self.depth = depth
         assert depth > 3
         dims = [math.floor(float(x)) for x in self.girth_from(depth, D_in, max_dim, D_out)]
         heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
         self._capsules = []
 
         for i in range(depth):
-            self._capsules.append(Capsule(dims[i], heights[i]))
+            self._capsules.append(Capsule(dims[i], heights[i], position=i))
 
         for i in range(depth):
             if i != depth - 1:
@@ -105,22 +106,49 @@ class Network:
                     g.append((end * ratio) + max * (1 - ratio))
         return g
 
-    def forward(self, vectors):
+    def train_on(self, vectors):
+        losses = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
-        for time, token in enumerate(vectors):
-            if time < len(vectors)-1:
-                in_group.start_with(time, token)
-                for capsule in self._capsules:
-                    capsule.forward(time)
+        for time in range(len(vectors)+self.depth):
+            print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
+            if time < len(vectors):
+                in_group.start_with(time, vectors[time])
 
-                e = self.loss(out_group.latest(time).state, )
+            for capsule in self._capsules:
+                capsule.forward(time)
+
+            if time >= self.depth:
+                print('Back-propagating now!')
+                expected = vectors[time-self.depth]
+                e = self.loss(out_group.latest(time).state, expected)
                 out_group.add_error(e,time)
+                out_group.backward(time)
+                losses.append(self.loss.loss)
+
+        assert len(losses) == len(vectors)
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
+        return losses
 
+    def pred(self, vectors):
+        preds = []
+        in_group = self._capsules[0]
+        out_group = self._capsules[len(self._capsules) - 1].groups[0]
+        for time in range(len(vectors) + self.depth):
+            if time < len(vectors):
+                in_group.start_with(time, vectors[time])
 
-# TESTING :
+            for capsule in self._capsules:
+                capsule.forward(time)
+
+            if time >= self.depth:
+                preds.append(out_group.latest(time).state)
+
+        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
+        return preds
+
+    # TESTING :
 
 torch.manual_seed(66642999)
 

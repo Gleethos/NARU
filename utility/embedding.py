@@ -4,6 +4,7 @@
 # GloVe:
 # https://nlp.stanford.edu/projects/glove/
 
+import torch
 import numpy as np
 import pickle
 import bcolz as bcolz
@@ -38,15 +39,15 @@ def convert_txt_to_pkl_files():
 class keydefaultdict(defaultdict):
     def __missing__(self, seed):
         np.random.seed(int(hashlib.sha1(seed.encode("utf-8")).hexdigest(), 16) % (10 ** 8))
-        return np.random.randn(50)
+        return torch.from_numpy(np.random.randn(50).reshape(1, -1)).to(torch.float32)
 
 
 def load_word_vec_dict():
     # Using those objects we can now create a dictionary that given a word returns its vector.
     vectors = bcolz.open(f'{glove_path}/6B.50.dat')[:]
+    vectors = [torch.from_numpy(v.reshape(1, -1)).to(torch.float32) for v in vectors]
     words = pickle.load(open(f'{glove_path}/6B.50_words.pkl', 'rb'))
     word2idx = pickle.load(open(f'{glove_path}/6B.50_idx.pkl', 'rb'))
     glove = {w: vectors[word2idx[w]] for w in words}
     glove = keydefaultdict(None, glove)
     return glove
-
