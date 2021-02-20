@@ -15,7 +15,13 @@ def save_params(params: list, folder: str):
                 raise
 
     for i, tensor in enumerate(params):
-        torch.save(tensor, folder+'parameter_'+str(i)+'.pt')
+        filename = folder+'parameter_'+str(i)+'.pt'
+        if os.path.exists(filename):
+            os.remove(filename)
+
+    for i, tensor in enumerate(params):
+        filename = folder+'parameter_'+str(i)+'.pt'
+        torch.save(tensor, filename)
 
 
 def load_params(folder: str):

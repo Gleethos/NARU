@@ -38,8 +38,7 @@ def exec_trial(
             instance_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
 
-        for W in model.get_params():
-            W.grad = W.grad / len(training_data)
+        for W in model.get_params(): W.grad = W.grad / len(training_data)
 
         optimizer.step()
 

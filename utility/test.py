@@ -12,8 +12,7 @@ from utility.classes import CONTEXT
 
 CONTEXT.BPTT_limit = 10
 
-# feed-forward-NARU
-model = Network(
+model = Network( # feed-forward-NARU
     depth=5,
     max_height=10,
     max_dim=64,
@@ -22,26 +21,32 @@ model = Network(
     D_out=50
 )
 
+jokes = load_jokes()
+optimizer = torch.optim.Adam(model.get_params(), lr=0.0001)
+encoder = Encoder()
+
+#save_params( [torch.range(0, 10, 3)], 'models/hey/' )
+#print(load_params('models/hey/'))
+#save_params( [torch.range(0, 10, 3)*17-10], 'models/hey/' )
+#print(load_params('models/hey/'))
+
 model.set_params(load_params('models/test_model/'))
 
-jokes = load_jokes()
-training_data = jokes#[:2]
+for i in range(5):
+    print(model.get_params()[0])
+    choice_matrices = exec_trial(
+        model=model,
+        encoder=encoder,
+        optimizer=optimizer,
+        training_data=jokes[:2],
+        test_data=jokes[2:10],
+        epochs=3
+    )
+    print(model.get_params()[0])
+    print(choice_matrices)
+    # SAVING PARAMETERS:
+    target_folder = 'models/test_model/' # 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
+    save_params( model.get_params(), target_folder )
 
-choice_matrices = exec_trial(
-    model=model,
-    encoder=Encoder(),
-    optimizer=torch.optim.Adam(model.get_params(), lr=0.0001),
-    training_data=training_data,
-    test_data=jokes[2:4],
-    epochs=1
-)
-
-print(choice_matrices)
-
-# SAVING PARAMETERS:
-
-target_folder = 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
-save_params( model.get_params(), target_folder )
-#loaded = load_params(target_folder)
 
 print('FFNN-NARU TEST DONE!')
