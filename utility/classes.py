@@ -6,6 +6,7 @@ import copy
 
 CONTEXT = threading.local()
 CONTEXT.recorders = []
+CONTEXT.BPTT_limit = 10
 
 torch.manual_seed(666)
 
@@ -33,11 +34,14 @@ class Recorder:
         self.history: dict = None  # history
         self.reset()
         CONTEXT.recorders.append(self)
+        self.time_restrictions : list = None
 
     def reset(self):
         self.history: dict = defaultdict(self.default_lambda)  # history
 
     def latest(self, time: int):
+        if self.time_restrictions is not None:
+            assert time in self.time_restrictions
         moment = self.history[time]
         is_record = moment.is_record
         while not is_record:
@@ -45,16 +49,20 @@ class Recorder:
             moment = self.history[time]
             is_record = moment.is_record
             if time < 0 : # first time step is recorded by default!
-                self.history[0] = self.history[0]
-                self.history[0].is_record = True
-                return self.history[0]
+                self.history[-1] = self.history[-1]
+                self.history[-1].is_record = True
+                return self.history[-1]
 
         return self.history[time]
 
     def at(self, time:int):
+        if self.time_restrictions is not None:
+            assert time in self.time_restrictions
         return self.history[time]
 
     def rec(self, time: int):
+        if self.time_restrictions is not None:
+            assert time in self.time_restrictions
         current = self.history[time]
         if not current.is_record:
             self.history[time] = copy.copy(self.latest(time))  # new entry (new Moment object)
@@ -79,13 +87,25 @@ class Route(Recorder):
         self.Wgr.grad = torch.zeros(D_in, 1)
         self.pd_g: torch.Tensor = None  # the partial derivative of g
 
-    def get_params(self):
-        return [self.Wr, self.Wgr, self.Wgh]
+    def get_params(self): return [self.Wr, self.Wgr, self.Wgh]
+
+    def set_params(self, params):
+        grad1 = self.Wr.grad
+        grad2 = self.Wgr.grad
+        grad3 = self.Wgh.grad
+        self.Wr  = params.pop(0)
+        self.Wgr = params.pop(0)
+        self.Wgh = params.pop(0)
+        self.Wr.grad = grad1
+        self.Wgr.grad = grad2
+        self.Wgh.grad = grad3
+
 
     def forward(self, h: torch.Tensor, r: torch.Tensor, time):
         g = r.matmul(self.Wgr) + h.matmul(self.Wgh)
         self.rec(time).pd_g = sig(g, derive=True)
         g = sig(g)
+        assert g >= 0 and g <= 1
         self.rec(time).g = g.mean().item()  # g is used for routing!
         self.rec(time).z = r.matmul(self.Wr)
         c = g * self.latest(time).z
@@ -152,6 +172,11 @@ class Source(Recorder):
         self.Ws.grad = torch.zeros(D_in, D_out)  # Gradients!
 
     def get_params(self): return [self.Ws]
+
+    def set_params(self,params):
+        grad = self.Ws.grad
+        self.Ws = params.pop(0)
+        self.Ws.grad = grad
 
     def forward(self, s: torch.Tensor):
         return s.matmul(self.Ws)
@@ -228,7 +253,15 @@ class Group(Recorder):
         params = []
         for node, route in self.to_conns.items():
             params.extend(route.get_params())
+        for node, source in self.from_conns.items():
+            params.extend(source.get_params())
         return params
+
+    def set_params(self, params):
+        for node, route in self.to_conns.items():
+            route.set_params(params)
+        for node, source in self.from_conns.items():
+            source.set_params(params)
 
     def str(self, level: str):
         return level + 'Group: {\n' + \
@@ -257,6 +290,11 @@ class Group(Recorder):
     def register_source(self, origin_group):
         self.from_conns[origin_group] = Source(D_in=origin_group.dimensionality, D_out=self.dimensionality)
 
+    def number_of_connections(self):
+        count = len(self.from_conns) + len(self.to_conns)
+        assert count > 0
+        return count
+
     # Execution :
 
     def start_with(self, time, x: torch.Tensor):
@@ -267,18 +305,18 @@ class Group(Recorder):
     def forward(self, time: int):
         assert time >= 0
         this_is_start = len(self.from_conns) == 0
+        number_of_connections = self.number_of_connections()
 
         if not self.at(time).is_sleeping or this_is_start:
             z = None
             if this_is_start:
                 z = self.latest(time).state  # Start group!
-                print('Starting with: ', str(z.shape))
                 assert z is not None
 
             # Source activations :
             for group, source in self.from_conns.items():
                 s = group.latest(time-1).state
-                print(self.nid() + ' - t' + str(time), ': s=' + str(s.shape))
+                #print(self.nid() + ' - t' + str(time), ': s=' + str(s.shape))
                 if z is None:
                     z = source.forward(s)
                 else:
@@ -289,7 +327,7 @@ class Group(Recorder):
             best_score = -1
             for group, route in self.to_conns.items():
                 h, r = self.latest(time-1).state, group.latest(time-1).state
-                print(self.nid()+' - t'+str(time),': h='+str(h.shape),'r='+str(r.shape))
+                #print(self.nid()+' - t'+str(time),': h='+str(h.shape),'r='+str(r.shape))
                 if z is None:
                     z = route.forward(h, r, time)
                 else:
@@ -297,11 +335,16 @@ class Group(Recorder):
 
                 # Checking if this route is better than another :
                 #print('Route Gate:', route.latest(time).g, '>?>', best_score)
-                if route.latest(time).g > best_score:
-                    best_score = route.latest(time).g
+                g = route.latest(time).g
+                if not (g >= 0 and g <= 1): print('Illegal gate:', g)
+                assert g >= 0 and g <= 1
+
+                if g > best_score:
+                    best_score = g
                     best_target = group
 
             if len(self.to_conns.items()) > 0:
+                if best_target is None: print(self.to_conns.items())
                 assert best_target is not None  # There has to be a choice!
 
                 # We activate the best group of neurons :
@@ -309,21 +352,28 @@ class Group(Recorder):
                 # No we save the next neuron group which ought to be activated :
 
             assert z is not None
+            z = z / number_of_connections
 
             if not this_is_start:
                 self.rec(time).state = self.activation(z)  # If this is not the start of the network... : Activate!
-                self.rec(time).derivative = self.activation(z, derive=True)
+                self.rec(time).derivative = self.activation(z, derive=True) / number_of_connections
 
-            return best_target  # The best group is being returned!
+            return True, best_target  # The best group is being returned!
+        return False, None
 
-    def backward(self, time: int):
+    def backward(self, time: int, countdown: int = CONTEXT.BPTT_limit):
+        assert countdown > -1
+        if countdown == 0: return # Back-prop limit reached!
+        assert time >= 0
+        this_is_start = len(self.from_conns) == 0
 
         current_error: torch.Tensor = self.latest(time).error
 
         if not self.at(time).is_sleeping:  # Back-prop only when this group was active at that time!
 
             # Multiplying with the partial derivative of the activation of this group.
-            current_error = current_error * self.latest(time).derivative
+            if not this_is_start:
+                current_error = current_error * self.latest(time).derivative
             current_state = self.latest(time).state
 
             assert self.latest(time).error_count > 0 # This node should already have an error! (because of route connection...)
@@ -355,20 +405,29 @@ class Group(Recorder):
 
             # Source Group backprop :
             for group, source in self.from_conns.items():
-                group.backward(time - 1)
+                group.backward(time - 1, countdown - 1)
 
             # Route Group backprop :
             for group, route in self.to_conns.items():
-                group.backward(time - 1)
+                group.backward(time - 1, countdown - 1)
 
 
     def activation(self, x, derive=False):  # State of the Art activation function, SWISH
+        #return self.mish(x, derive)
         if derive:
             return sig(x)
         else:
             return sig(x) * x
-        # return x * torch.tanh(nn.functional.softplus(x)) # MISH might also be interesting
+        #return x * torch.tanh(nn.functional.softplus(x)) # MISH might also be interesting
 
+    def mish(self, x, derive=False):
+        sfp = torch.nn.Softplus()
+        if derive:
+            omega = torch.exp(3 * x) + 4 * torch.exp(2 * x) + (6 + 4 * x) * torch.exp(x) + 4 * (1 + x)
+            delta = 1 + ( (torch.exp(x) + 1)**2 )
+            return torch.exp(x) * omega / (delta**2)
+        else:
+            return x * torch.tanh(sfp(x))
 
 print('Group loaded! Unit-Testing now...')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -426,7 +485,7 @@ def test_simple_net(group, other1, other2, output):
     for g in groups: g.forward(2)
     for g in groups: assert g.latest(0).error_count == 0
     print(str(output.at(2).state))
-    assert str(output.at(2).state) == 'tensor([[5.1944]])'#'tensor([[-0.2231]])'
+    assert str(output.at(2).state) == 'tensor([[0.9552]])'#'tensor([[5.1944]])'#'tensor([[-0.2231]])'
     output.add_error(torch.tensor([[1]]),2)
     assert output.latest(1).error_count == 0
     assert output.latest(2).error_count == 1
@@ -436,10 +495,10 @@ def test_simple_net(group, other1, other2, output):
 
     grad = str(next(iter(other1.from_conns.values())).Ws.grad)
     print(grad)
-    #assert grad in [
-    #    'tensor([[ 0.0116, -0.1126,  1.6734],\n        [ 0.0231, -0.2252,  3.3468],\n        [-0.0058,  0.0563, -0.8367]])',
-    #    'tensor([[ 0.0231, -0.2252,  3.3468],\n        [ 0.0463, -0.4505,  6.6936],\n        [-0.0116,  0.1126, -1.6734]])'
-    #]
+    assert grad in [
+        'tensor([[-0.0209,  0.0304, -0.4715],\n        [-0.0070,  0.0101, -0.1572],\n        [-0.0278,  0.0406, -0.6287]])',
+        'tensor([[-0.0417,  0.0608, -0.9431],\n        [-0.0139,  0.0203, -0.3144],\n        [-0.0556,  0.0811, -1.2574]])'
+    ]
     grad = str(next(iter(other2.from_conns.values())).Ws.grad)
     assert grad == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
 

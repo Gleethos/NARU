@@ -51,3 +51,14 @@ def load_word_vec_dict():
     glove = {w: vectors[word2idx[w]] for w in words}
     glove = keydefaultdict(None, glove)
     return glove
+
+
+# Word to index encoding...
+class Encoder:
+
+    def __init__(self):
+        self.word_to_vec = load_word_vec_dict()
+
+    def sequence_words_in(self, seq):
+        return [self.word_to_vec[w] for w in seq]
+

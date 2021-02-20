@@ -12,13 +12,21 @@ import torch
 class Capsule:
 
     def __init__(self, dimensionality, size: int, position=None):
+        self.position = position
         self.groups = []
         for i in range(size):  # creating "size" number of groups for this capsule
             self.groups.append(Group(i, dimensionality, position))
 
     def forward(self, time):
-        for group in self.groups:
-            group.forward(time)
+        actives = []
+        for i, group in enumerate(self.groups):
+            was_active, choice = group.forward(time)
+            if was_active:
+                actives.append(group.index)
+
+        if len(actives) == 0: actives.append(-1)
+        assert len(actives) == 1
+        return actives[0]
 
     # IO :
 
@@ -108,28 +116,45 @@ class Network:
 
     def train_on(self, vectors):
         losses = []
+        choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
         for time in range(len(vectors)+self.depth):
-            print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
+            #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
 
-            for capsule in self._capsules:
-                capsule.forward(time)
+            for recorder in CONTEXT.recorders:
+                recorder.time_restrictions = [time-1, time, time+1]
 
+            choice_indices = []
+            for capsule in self._capsules:
+                index = capsule.forward(time)
+                choice_indices.append(index)
+            choice_matrix.append(choice_indices)
+            #print('Choice indices:', choice_indices)
+
+            for recorder in CONTEXT.recorders:
+                recorder.time_restrictions = None
+
+            # There is a time delay as large as the network is long:
             if time >= self.depth:
-                print('Back-propagating now!')
+                progress = (time - self.depth) / (len(vectors)-1)
+                dampener = 10 + 90 * ( 1 - progress )
+                #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
                 expected = vectors[time-self.depth]
-                e = self.loss(out_group.latest(time).state, expected)
-                out_group.add_error(e,time)
+                predicted = out_group.latest(time).state
+                e = self.loss(predicted, expected)
+                e = e / dampener
+                out_group.add_error(e, time)
                 out_group.backward(time)
                 losses.append(self.loss.loss)
+                #print('Loss at ', time, ':', self.loss.loss)
 
         assert len(losses) == len(vectors)
 
-        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
-        return losses
+        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
+        return choice_matrix, losses
 
     def pred(self, vectors):
         preds = []
@@ -145,8 +170,22 @@ class Network:
             if time >= self.depth:
                 preds.append(out_group.latest(time).state)
 
-        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
+        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the prediction!
         return preds
+
+    def get_params(self):
+        params = []
+        for c in self._capsules:
+            for g in c.groups:
+                params.extend(g.get_params())
+        return params
+
+    def set_params(self, params):
+        params = params.copy()
+        for c in self._capsules:
+            for g in c.groups:
+                g.set_params(params)
+        assert len(params) == 0
 
     # TESTING :
 
