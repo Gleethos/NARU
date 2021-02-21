@@ -14,10 +14,10 @@ def save_params(params: list, folder: str):
             if exc.errno != errno.EEXIST:
                 raise
 
-    for i, tensor in enumerate(params):
-        filename = folder+'parameter_'+str(i)+'.pt'
-        if os.path.exists(filename):
-            os.remove(filename)
+    #for i, tensor in enumerate(params):
+    #    filename = folder+'parameter_'+str(i)+'.pt'
+    #    if os.path.exists(filename):
+    #        os.remove(filename)
 
     for i, tensor in enumerate(params):
         filename = folder+'parameter_'+str(i)+'.pt'

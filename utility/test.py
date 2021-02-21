@@ -10,7 +10,7 @@ from utility.classes import CONTEXT
 
 # ---------------------------------------------------------------------
 
-CONTEXT.BPTT_limit = 10
+CONTEXT.BPTT_limit = 100 #10
 
 model = Network( # feed-forward-NARU
     depth=5,
@@ -18,7 +18,8 @@ model = Network( # feed-forward-NARU
     max_dim=64,
     max_cone=5,
     D_in=50,
-    D_out=50
+    D_out=50,
+    with_bias=False
 )
 
 jokes = load_jokes()
@@ -32,17 +33,15 @@ encoder = Encoder()
 
 model.set_params(load_params('models/test_model/'))
 
-for i in range(5):
-    print(model.get_params()[0])
+for i in range(1):
     choice_matrices = exec_trial(
         model=model,
         encoder=encoder,
         optimizer=optimizer,
-        training_data=jokes[:2],
-        test_data=jokes[2:10],
-        epochs=3
+        training_data=jokes[:1],
+        test_data=jokes[10:20],
+        epochs=30
     )
-    print(model.get_params()[0])
     print(choice_matrices)
     # SAVING PARAMETERS:
     target_folder = 'models/test_model/' # 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
@@ -50,3 +49,7 @@ for i in range(5):
 
 
 print('FFNN-NARU TEST DONE!')
+
+test_sentence = encoder.sequence_words_in('What did the bartender say to the jumper cables ?'.split())
+preds = model.pred(test_sentence)
+print(' '.join(encoder.sequence_vecs_in(preds)))

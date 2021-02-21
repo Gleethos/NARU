@@ -43,14 +43,14 @@ def exec_trial(
         optimizer.step()
 
         print('===================================================')
-        print('Epoch', epoch, ' done! loss =', instance_losses[len(instance_losses) - 1], '\n')
+        print('Epoch', epoch, ' done! loss =', instance_losses[len(instance_losses) - 1],'; Avg =', sum(instance_losses)/len(instance_losses), '\n')
 
         if test_data is not None:
             sum_loss = 0
             for sentence in test_data:
                 sentence = encoder.sequence_words_in(sentence)
                 preds = model.pred(sentence)
-
+                #print(' '.join(encoder.sequence_vecs_in(preds)))
                 sum_loss += (
                     sum(
                         [torch.mean((preds[i] - sentence[i]) ** 2) for i in range(len(preds))]

@@ -52,13 +52,28 @@ def load_word_vec_dict():
     glove = keydefaultdict(None, glove)
     return glove
 
+from scipy.spatial import KDTree
 
 # Word to index encoding...
 class Encoder:
 
     def __init__(self):
         self.word_to_vec = load_word_vec_dict()
+        self.vec_i_to_word = dict()
+        vectors = []
+        i = 0
+        for word, vector in self.word_to_vec.items():
+            vectors.append(vector.view(-1).tolist())
+            self.vec_i_to_word[i] = word
+            i = i + 1
+        self.tree = KDTree(vectors)
 
     def sequence_words_in(self, seq):
         return [self.word_to_vec[w] for w in seq]
 
+    def sequence_vecs_in(self, seq):
+        result = []
+        for vec in seq:
+            d, i = self.tree.query(vec.view(-1).tolist())
+            result.append(self.vec_i_to_word[i])
+        return result

@@ -11,11 +11,11 @@ import torch
 
 class Capsule:
 
-    def __init__(self, dimensionality, size: int, position=None):
+    def __init__(self, dimensionality, size: int, position=None, with_bias=False):
         self.position = position
         self.groups = []
         for i in range(size):  # creating "size" number of groups for this capsule
-            self.groups.append(Group(i, dimensionality, position))
+            self.groups.append(Group(i, dimensionality, position, with_bias=with_bias))
 
     def forward(self, time):
         actives = []
@@ -71,6 +71,7 @@ class Network:
                  max_cone=39,
                  D_in=100,
                  D_out=10,
+                 with_bias=False
                  ):
         self.loss = Loss()
         self.depth = depth
@@ -80,7 +81,7 @@ class Network:
         self._capsules = []
 
         for i in range(depth):
-            self._capsules.append(Capsule(dims[i], heights[i], position=i))
+            self._capsules.append(Capsule(dims[i], heights[i], position=i, with_bias=with_bias))
 
         for i in range(depth):
             if i != depth - 1:
@@ -140,7 +141,7 @@ class Network:
             # There is a time delay as large as the network is long:
             if time >= self.depth:
                 progress = (time - self.depth) / (len(vectors)-1)
-                dampener = 10 + 90 * ( 1 - progress )
+                dampener = 1 + 99 * ( 1 - progress )**2
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
                 expected = vectors[time-self.depth]
                 predicted = out_group.latest(time).state
