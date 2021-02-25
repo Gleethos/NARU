@@ -120,11 +120,12 @@ class Network:
         choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
-        for time in range(len(vectors)+self.depth):
+        for time in range(len(vectors)+(self.depth-1)):
             #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
 
+            # The following will be used to perform assertions for validity:
             for recorder in CONTEXT.recorders:
                 recorder.time_restrictions = [time-1, time, time+1]
 
@@ -135,15 +136,16 @@ class Network:
             choice_matrix.append(choice_indices)
             #print('Choice indices:', choice_indices)
 
-            for recorder in CONTEXT.recorders:
-                recorder.time_restrictions = None
+            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
             # There is a time delay as large as the network is long:
-            if time >= self.depth:
-                progress = (time - self.depth) / (len(vectors)-1)
-                dampener = 1 + 99 * ( 1 - progress )**2
+            if time >= self.depth - 1:
+                assert not out_group.latest(time).is_sleeping
+                progress = (time - (self.depth - 1)) / (len(vectors)-1)
+                dampener = 100 + 900 * ( 1 - progress )**4
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
-                expected = vectors[time-self.depth]
+                #print(time, time-(self.depth-1), len(vectors))
+                expected = vectors[time-(self.depth-1)]
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
                 e = e / dampener
@@ -151,6 +153,8 @@ class Network:
                 out_group.backward(time)
                 losses.append(self.loss.loss)
                 #print('Loss at ', time, ':', self.loss.loss)
+            else:
+                assert out_group.latest(time).is_sleeping
 
         assert len(losses) == len(vectors)
 
@@ -165,8 +169,7 @@ class Network:
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
 
-            for capsule in self._capsules:
-                capsule.forward(time)
+            for capsule in self._capsules: capsule.forward(time)
 
             if time >= self.depth:
                 preds.append(out_group.latest(time).state)
@@ -184,8 +187,7 @@ class Network:
     def set_params(self, params):
         params = params.copy()
         for c in self._capsules:
-            for g in c.groups:
-                g.set_params(params)
+            for g in c.groups: g.set_params(params)
         assert len(params) == 0
 
     # TESTING :

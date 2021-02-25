@@ -38,9 +38,10 @@ def exec_trial(
             instance_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
 
-        for W in model.get_params(): W.grad = W.grad / len(training_data)
+        for W in model.get_params(): W.grad /= (len(training_data)*10000)
 
-        optimizer.step()
+        for W in model.get_params(): W += W.grad
+        #optimizer.step()
 
         print('===================================================')
         print('Epoch', epoch, ' done! loss =', instance_losses[len(instance_losses) - 1],'; Avg =', sum(instance_losses)/len(instance_losses), '\n')

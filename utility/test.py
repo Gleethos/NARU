@@ -10,7 +10,7 @@ from utility.classes import CONTEXT
 
 # ---------------------------------------------------------------------
 
-CONTEXT.BPTT_limit = 100 #10
+CONTEXT.BPTT_limit = 10 #10
 
 model = Network( # feed-forward-NARU
     depth=5,
@@ -31,7 +31,7 @@ encoder = Encoder()
 #save_params( [torch.range(0, 10, 3)*17-10], 'models/hey/' )
 #print(load_params('models/hey/'))
 
-model.set_params(load_params('models/test_model/'))
+#model.set_params(load_params('models/test_model/'))
 
 for i in range(1):
     choice_matrices = exec_trial(
@@ -39,8 +39,8 @@ for i in range(1):
         encoder=encoder,
         optimizer=optimizer,
         training_data=jokes[:1],
-        test_data=jokes[10:20],
-        epochs=30
+        test_data=jokes[10:15],
+        epochs=20
     )
     print(choice_matrices)
     # SAVING PARAMETERS:
