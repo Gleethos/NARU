@@ -126,8 +126,7 @@ class Network:
                 in_group.start_with(time, vectors[time])
 
             # The following will be used to perform assertions for validity:
-            for recorder in CONTEXT.recorders:
-                recorder.time_restrictions = [time-1, time, time+1]
+            for recorder in CONTEXT.recorders: recorder.time_restrictions = [time-1, time, time+1]
 
             choice_indices = []
             for capsule in self._capsules:
@@ -150,7 +149,14 @@ class Network:
                 e = self.loss(predicted, expected)
                 e = e / dampener
                 out_group.add_error(e, time)
-                out_group.backward(time)
+
+                for back_time in range(time, -1, -1):
+                    for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time]
+                    for capsule in self._capsules:
+                        for group in capsule.groups:
+                            group.backward(time)
+                    for recorder in CONTEXT.recorders: recorder.time_restrictions = None
+
                 losses.append(self.loss.loss)
                 #print('Loss at ', time, ':', self.loss.loss)
             else:

@@ -279,10 +279,6 @@ class Group(Recorder):
                 # print(self.nid()+' - t'+str(time),': h='+str(h.shape),'r='+str(r.shape))
                 if z is None: z = source.forward(h, r, time)
                 else: z = z + source.forward(h, r, time)
-                #s = group.latest(time-1).state
-                ##print(self.nid() + ' - t' + str(time), ': s=' + str(s.shape))
-                #if z is None: z = source.forward(s)
-                #else: z = z + source.forward(s)
 
             # Route activations :
             best_target = None
@@ -325,16 +321,14 @@ class Group(Recorder):
             return True, best_target  # The best group is being returned!
         return False, None
 
-    def backward(self, time: int, countdown: int = CONTEXT.BPTT_limit):
-        assert countdown > -1
-        if countdown == 0: return # Back-prop limit reached!
+    def backward(self, time: int):
         assert time >= 0
         this_is_start = len(self.from_conns) == 0
         this_is_end = len(self.to_conns) == 0
 
         current_error: torch.Tensor = self.latest(time).error
 
-        if not self.at(time).is_sleeping:  # Back-prop only when this group was active at that time!
+        if not self.at(time).is_sleeping and current_error is not None:  # Back-prop only when this group was active at that time!
 
             # Multiplying with the partial derivative of the activation of this group.
             if not this_is_start:
@@ -359,13 +353,8 @@ class Group(Recorder):
                 )
                 group.add_error(g_r, time - 1)
                 # Accumulating g_h to self:
-                self.add_error(g_h, time - 1)
+                self.add_error(g_h, time - 1) # setting or accumulating the error!
 
-                #g_s = source.backward(
-                #    e_s=current_error,
-                #    s=group.latest(time - 1).state  # Needed to calculate gradients of the weights!
-                #)
-                #group.add_error(g_s, time - 1) # setting or accumulating the error!
 
             # Route (error) back-prop :
             for group, route in self.to_conns.items():  # Distributing error to route groups...
@@ -381,13 +370,6 @@ class Group(Recorder):
                 # Accumulating g_h to self:
                 self.add_error(g_h, time - 1)
 
-            # Source Group backprop :
-            for group, source in self.from_conns.items():
-                group.backward(time - 1, countdown - 1)
-
-            # Route Group backprop :
-            for group, route in self.to_conns.items():
-                group.backward(time - 1, countdown - 1)
 
 
     def activation(self, x, derive=False):  # State of the Art activation function, SWISH
