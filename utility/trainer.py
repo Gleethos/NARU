@@ -40,7 +40,7 @@ def exec_trial(
 
         for W in model.get_params(): W.grad /= (len(training_data))
 
-        #for W in model.get_params(): W += W.grad
+        for W in model.get_params(): W += W.grad
         optimizer.step()
 
         print('===================================================')

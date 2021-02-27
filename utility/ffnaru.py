@@ -28,6 +28,17 @@ class Capsule:
         assert len(actives) == 1
         return actives[0]
 
+    def backward(self, time):
+        actives = []
+        for i, group in enumerate(self.groups):
+            was_active, choice = group.backward(time)
+            if was_active:
+                actives.append(group.index)
+
+        if len(actives) == 0: actives.append(-1)
+        assert len(actives) == 1 # Only one group can be active in one capsule
+        return actives[0]
+
     # IO :
 
     def get_params(self):
@@ -120,6 +131,8 @@ class Network:
         choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
+        errors = []
+        print('Forward pass:')
         for time in range(len(vectors)+(self.depth-1)):
             #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
             if time < len(vectors):
@@ -133,36 +146,39 @@ class Network:
                 index = capsule.forward(time)
                 choice_indices.append(index)
             choice_matrix.append(choice_indices)
-            #print('Choice indices:', choice_indices)
-
-            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
+            print('Choice indices:', choice_indices)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
                 assert not out_group.latest(time).is_sleeping
                 progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 100 + 900 * ( 1 - progress )**4
+                dampener = 10 + 90 * ( 1 - progress )**4
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
-                #print(time, time-(self.depth-1), len(vectors))
                 expected = vectors[time-(self.depth-1)]
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
                 e = e / dampener
-                out_group.add_error(e, time)
-
-                for back_time in range(time, -1, -1):
-                    for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time]
-                    for capsule in self._capsules:
-                        for group in capsule.groups:
-                            group.backward(time)
-                    for recorder in CONTEXT.recorders: recorder.time_restrictions = None
-
+                #out_group.add_error(e, time)
+                out_group.at(time).error = e
+                out_group.at(time).error_count = 1
                 losses.append(self.loss.loss)
-                #print('Loss at ', time, ':', self.loss.loss)
-            else:
-                assert out_group.latest(time).is_sleeping
+                print('Loss at ', time, ':', self.loss.loss)
+            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
+        #else:
+        #    assert out_group.latest(time).is_sleeping
 
         assert len(losses) == len(vectors)
+
+        for time in range(len(vectors)+(self.depth-1)-1, -1, -1):
+            if time >= self.depth - 1:
+                print('backprop at:',time)
+                for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
+                choice_indices = []
+                for i, capsule in enumerate(self._capsules):
+                    index = capsule.backward(time)
+                    choice_indices.append(index)
+                print('Backward Choice indices:', choice_indices)
+                for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
         return choice_matrix, losses

@@ -61,9 +61,9 @@ class TestEncoder:
 
     def __init__(self):
         self.word_to_vec = {
-            'a':torch.tensor([[-1.0, -2.0, 3.0]], dtype=torch.float32),
-            'b': torch.tensor([[-4.0, 2.0, -1.0]], dtype=torch.float32),
-            'c': torch.tensor([[2.0, 6.0, -3.0]], dtype=torch.float32),
+            'a':torch.tensor([[-4.0, 2.0, 3.0]], dtype=torch.float32),
+            'b': torch.tensor([[-1.0, -6.0, 4.0]], dtype=torch.float32),
+            'c': torch.tensor([[2.0, 6.0, -4.0]], dtype=torch.float32),
         }
 
     def sequence_words_in(self, seq):
@@ -88,6 +88,7 @@ def test_2():
         D_out=3,
         with_bias=False
     )
+    print(model.str())
 
     data = ['a b c'.split(), 'c b a'.split()]
     optimizer = torch.optim.Adam(model.get_params(), lr=0.0001)
@@ -100,7 +101,7 @@ def test_2():
             optimizer=optimizer,
             training_data=data[:1],
             test_data=data[:1],
-            epochs=3
+            epochs=2
         )
         print(choice_matrices)
 
