@@ -101,7 +101,7 @@ def test_2():
             optimizer=optimizer,
             training_data=data[:1],
             test_data=data[:1],
-            epochs=2
+            epochs=20
         )
         print(choice_matrices)
 

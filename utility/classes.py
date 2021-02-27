@@ -13,26 +13,20 @@ torch.manual_seed(666)
 # ----------------------------------------------------------------------------------------------------------------------#
 
 
-# Moments are responsible for holding variables needed for propagating back through time.
-class Moment:
-    def __init__(self):
-        self.is_record = False # Moments can be records or "on the fly creations" provided by the defaultdict...
-    pass
-
 # A useful method used later on...
 def sig(x, derive=False):
     s = torch.sigmoid(x)
-    if derive:
-        return s * (1 - s)
-    else:
-        return s
+    if derive: return s * (1 - s)
+    else: return s
 
-def activation(self, x, derive=False):  # State of the Art activation function, SWISH
+
+def activation(x, derive=False):  # State of the Art activation function, SWISH
     s = sig(x) * x # return sig(x, derive)
     if derive: return s + sig(x) * (1-s)
     else: return s
 
-def mish(self, x, derive=False):
+
+def mish(x, derive=False):
     sfp = torch.nn.Softplus()
     if derive:
         omega = torch.exp(3 * x) + 4 * torch.exp(2 * x) + (6 + 4 * x) * torch.exp(x) + 4 * (1 + x)
@@ -41,8 +35,17 @@ def mish(self, x, derive=False):
     else:
         return x * torch.tanh(sfp(x))
 
+
 # ----------------------------------------------------------------------------------------------------------------------#
 # HISTORY BASE CLASS
+
+
+# Moments are responsible for holding variables needed for propagating back through time.
+class Moment:
+    def __init__(self):
+        self.is_record = False # Moments can be records or "on the fly creations" provided by the defaultdict...
+    pass
+
 
 class Recorder:
     def __init__(self, default_lambda):
@@ -52,12 +55,10 @@ class Recorder:
         CONTEXT.recorders.append(self)
         self.time_restrictions : list = None
 
-    def reset(self):
-        self.history: dict = defaultdict(self.default_lambda)  # history
+    def reset(self): self.history: dict = defaultdict(self.default_lambda)  # history
 
     def latest(self, time: int):
-        if self.time_restrictions is not None:
-            assert time in self.time_restrictions
+        if self.time_restrictions is not None: assert time in self.time_restrictions
         moment = self.history[time]
         is_record = moment.is_record
         while not is_record:
@@ -72,14 +73,14 @@ class Recorder:
         return self.history[time]
 
     def at(self, time:int):
-        if self.time_restrictions is not None:
-            assert time in self.time_restrictions
+        if self.time_restrictions is not None: assert time in self.time_restrictions
         return self.history[time]
 
     def rec(self, time: int):
         if self.time_restrictions is not None: assert time in self.time_restrictions
         if not self.history[time].is_record:
-            self.history[time] = copy.copy(self.latest(time))  # new entry (new Moment object)
+            self.history[time] = self.history[time]#self.latest(time)#copy.copy(self.latest(time))  # new entry (new Moment object)
+            self.history[time].time = time
         self.history[time].is_record = True
         return self.history[time]
 
@@ -104,9 +105,7 @@ class Route:
     def get_params(self): return [self.Wr, self.Wgr, self.Wgh]
 
     def set_params(self, params):
-        grad1 = self.Wr.grad
-        grad2 = self.Wgr.grad
-        grad3 = self.Wgh.grad
+        grad1, grad2, grad3 = self.Wr.grad, self.Wgr.grad, self.Wgh.grad
         self.Wr  *= 0
         self.Wgr *= 0
         self.Wgh *= 0
@@ -153,8 +152,7 @@ route = Route(D_in=3, D_out=2)
 assert len(CONTEXT.recorders) == 0
 #assert CONTEXT.recorders[0] == route
 
-r = torch.ones(1, 3)
-h = torch.ones(1, 2)
+r, h = torch.ones(1, 3), torch.ones(1, 2)
 
 #c = route.forward(h, r, 0)
 #assert str(c) == 'tensor([[ 0.1663, -0.0411]])'
@@ -189,6 +187,7 @@ def default_moment(dimensionality: int):
     m.error = None
     m.error_count = 0
     m.conns = dict()
+    m.time = None
     return m
 
 
@@ -270,6 +269,7 @@ class Group(Recorder):
         this_is_start = len(self.from_conns) == 0
         assert this_is_start
         self.rec(time-1).state = x
+        self.rec(time-1).is_sleeping = False
 
     def forward(self, time: int):
         assert time >= 0
@@ -328,8 +328,8 @@ class Group(Recorder):
                 current_moment.state = z  # If this is not the end of the network... : No activation!!
                 current_moment.derivative = 1 / number_of_connections # The derivative is simple because no function...
             elif not this_is_start:
-                current_moment.state = activation(z)  # If this is not the start of the network... : Activate!
-                current_moment.derivative = activation(z, derive=True) / number_of_connections
+                current_moment.state = activation(x=z)  # If this is not the start of the network... : Activate!
+                current_moment.derivative = activation(x=z, derive=True) / number_of_connections
 
             #print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
 

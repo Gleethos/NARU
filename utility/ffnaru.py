@@ -115,8 +115,7 @@ class Network:
     def girth_from(self, length, start, max, end):
         g, mid = [], (length - 1) / 2
         for i in range(length):
-            if math.fabs(mid - i) < 1:
-                g.append(max)
+            if math.fabs(mid - i) < 1: g.append(max)
             else:
                 if i < mid:
                     ratio = i / mid
@@ -131,7 +130,6 @@ class Network:
         choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
-        errors = []
         print('Forward pass:')
         for time in range(len(vectors)+(self.depth-1)):
             #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
@@ -193,8 +191,7 @@ class Network:
 
             for capsule in self._capsules: capsule.forward(time)
 
-            if time >= self.depth:
-                preds.append(out_group.latest(time).state)
+            if time >= self.depth: preds.append(out_group.latest(time).state)
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the prediction!
         return preds
