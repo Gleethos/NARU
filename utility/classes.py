@@ -272,7 +272,7 @@ class Group(Recorder):
         this_is_start = len(self.from_conns) == 0
         assert this_is_start
         self.rec(time-1).state = x
-        self.rec(time-1).is_sleeping = False
+        self.rec(time).is_sleeping = False
 
     def forward(self, time: int):
         assert time >= 0
@@ -281,7 +281,7 @@ class Group(Recorder):
         current_moment = self.at(time)
         number_of_connections = self.number_of_connections()
 
-        if not current_moment.is_sleeping or this_is_start:
+        if not current_moment.is_sleeping:
 
             print('Awake:', self.nid(), '-', time)
             current_moment.message = 'Was active!'
@@ -430,7 +430,8 @@ def test_simple_net(group, other1, other2, output):
     assert len(output.to_conns) == 0
 #    assert len(CONTEXT.recorders) == 4 + 2 + 2 + 2 + 2 # four groups and 6 connections
 
-    group.rec(-1).state = torch.tensor([[1.0, 2.0, 3.0]])
+    #group.rec(-1).state = torch.tensor([[1.0, 2.0, 3.0]])
+    group.start_with(time=0, x=torch.tensor([[1.0, 2.0, 3.0]]))
     groups = [group, other1, other2, output]
     for g in groups: g.forward(0)
 
@@ -444,7 +445,8 @@ def test_simple_net(group, other1, other2, output):
     assert other2.at(2).is_sleeping
     assert output.at(2).is_sleeping
 
-    group.rec(0).state = torch.tensor([[-3.0, -1.0, -4.0]])
+    #group.rec(0).state = torch.tensor([[-3.0, -1.0, -4.0]])
+    group.start_with(time=1, x=torch.tensor([[-3.0, -1.0, -4.0]]))
     for g in groups: g.forward(1)
 
     assert not other1.at(1).is_sleeping # first step is still recorded...

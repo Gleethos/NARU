@@ -161,22 +161,24 @@ class Network:
                 out_group.at(time).error_count = 1
                 losses.append(self.loss.loss)
                 print('Loss at ', time, ':', self.loss.loss)
+            else:
+                assert out_group.latest(time).is_sleeping
+
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
-        #else:
-        #    assert out_group.latest(time).is_sleeping
 
         assert len(losses) == len(vectors)
+        last_time = time
 
-        for time in range(len(vectors)+(self.depth-1)-1, -1, -1):
-            if time >= self.depth - 1:
-                print('backprop at:',time)
-                for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
-                choice_indices = []
-                for i, capsule in enumerate(self._capsules):
-                    index = capsule.backward(time)
-                    choice_indices.append(index)
-                print('Backward Choice indices:', choice_indices)
-                for recorder in CONTEXT.recorders: recorder.time_restrictions = None
+        for back_counter in range(len(vectors)):
+            time = last_time - back_counter
+            print('backprop at:', time, '; Back-counter:', back_counter)
+            for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
+            choice_indices = []
+            for i, capsule in enumerate(self._capsules):
+                index = capsule.backward(time)
+                choice_indices.append(index)
+            print('Backward Choice indices:', choice_indices)
+            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
         return choice_matrix, losses
