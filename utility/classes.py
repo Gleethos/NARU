@@ -271,7 +271,7 @@ class Group(Recorder):
     def start_with(self, time, x: torch.Tensor):
         this_is_start = len(self.from_conns) == 0
         assert this_is_start
-        self.rec(time-1).state = x
+        self.rec(time).state = x
         self.rec(time).is_sleeping = False
 
     def forward(self, time: int):
@@ -283,7 +283,7 @@ class Group(Recorder):
 
         if not current_moment.is_sleeping:
 
-            print('Awake:', self.nid(), '-', time)
+            #print('Awake:', self.nid(), '-', time)
             current_moment.message = 'Was active!'
             z = None
             if this_is_start:
@@ -349,7 +349,7 @@ class Group(Recorder):
         if not current_moment.is_sleeping and current_moment.error is not None:  # Back-prop only when this group was active at that time!
 
             current_error: torch.Tensor = current_moment.error
-            print('Was awake, now backprop:', self.nid(), '-', time)
+            #print('Was awake, now backprop:', self.nid(), '-', time)
             # Multiplying with the partial derivative of the activation of this group.
             if not this_is_start:
                 current_error = current_error * current_moment.derivative
@@ -454,8 +454,8 @@ def test_simple_net(group, other1, other2, output):
     #assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
     #print([r.latest(1).g for r in group.to_conns.values()])
-    assert other1.at(2).is_sleeping # New step as well!
-    assert not other2.at(2).is_sleeping # CHOICE: other2
+    assert not other1.at(2).is_sleeping # New step as well!
+    assert other2.at(2).is_sleeping # CHOICE: other2
     assert not output.at(2).is_sleeping
     #assert [r.latest(1).g for r in group.to_conns.values()] == [0.881648063659668, 0.9996621608734131]
     #assert [r.latest(1).g for r in other1.to_conns.values()] == [0.5]

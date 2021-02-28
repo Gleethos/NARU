@@ -128,6 +128,7 @@ class Network:
     def train_on(self, vectors):
         losses = []
         choice_matrix = []
+        reverse_choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
         print('Forward pass:')
@@ -144,43 +145,52 @@ class Network:
                 index = capsule.forward(time)
                 choice_indices.append(index)
             choice_matrix.append(choice_indices)
-            print('Choice indices:', choice_indices)
+            print('Forward,  t'+str(time)+':', choice_indices)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
-                assert not out_group.latest(time).is_sleeping
+                assert not out_group.at(time).is_sleeping
+                vector_index = time-(self.depth-2)
+                if 0 <= vector_index < len(vectors):
+                    expected = vectors[vector_index]
+                else:
+                    expected = vectors[0] * 0.0
                 progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 10 + 90 * ( 1 - progress )**4
+                dampener = 100 + 900 * ( 1 - progress )**4
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
-                expected = vectors[time-(self.depth-1)]
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
                 e = e / dampener
                 #out_group.add_error(e, time)
-                out_group.at(time).error = e
+                out_group.at(time).error = -e
                 out_group.at(time).error_count = 1
+                print('Added error! v', time-(self.depth-1), predicted)
                 losses.append(self.loss.loss)
-                print('Loss at ', time, ':', self.loss.loss)
+                #print('Loss at ', time, ':', self.loss.loss)
             else:
-                assert out_group.latest(time).is_sleeping
+                assert out_group.at(time).is_sleeping
 
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
         assert len(losses) == len(vectors)
         last_time = time
 
-        for back_counter in range(len(vectors)):
+        for back_counter in range(len(vectors)+self.depth-1):
             time = last_time - back_counter
-            print('backprop at:', time, '; Back-counter:', back_counter)
+            #print('backprop at:', time, '; Back-counter:', back_counter)
             for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
             choice_indices = []
             for i, capsule in enumerate(self._capsules):
                 index = capsule.backward(time)
                 choice_indices.append(index)
-            print('Backward Choice indices:', choice_indices)
+            print('Backward, t'+str(time)+':', choice_indices)
+            reverse_choice_matrix.append(choice_indices)
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
+
+        reverse_choice_matrix.reverse()
+        assert choice_matrix == reverse_choice_matrix
         return choice_matrix, losses
 
     def pred(self, vectors):

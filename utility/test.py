@@ -90,7 +90,7 @@ def test_2():
     )
     print(model.str())
 
-    data = ['b a b c'.split(), 'c c b a'.split()]
+    data = ['c a b c c'.split(), 'c c b a c'.split()]
     optimizer = torch.optim.Adam(model.get_params(), lr=0.0001)
     encoder = TestEncoder()
 
@@ -101,7 +101,7 @@ def test_2():
             optimizer=optimizer,
             training_data=data[:1],
             test_data=data[:1],
-            epochs=20
+            epochs=200
         )
         print(choice_matrices)
 

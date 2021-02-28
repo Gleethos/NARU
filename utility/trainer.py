@@ -28,7 +28,7 @@ def exec_trial(
         # The neural network should learn data more randomly:
         random.Random(666 + epoch + 999).shuffle(training_data)  # ... so we shuffle it! :)
 
-        optimizer.zero_grad()
+        #optimizer.zero_grad()
 
         for i, sentence in enumerate(training_data):
             print('Training on sentence', i, ': "', sentence, '"')
@@ -40,8 +40,10 @@ def exec_trial(
 
         for W in model.get_params(): W.grad /= (len(training_data))
 
-        for W in model.get_params(): W += W.grad
-        optimizer.step()
+        for W in model.get_params():
+            W += W.grad
+            W.grad *= 0
+        #optimizer.step()
 
         print('===================================================')
         print('Epoch', epoch, ' done! loss =', instance_losses[len(instance_losses) - 1],'; Avg =', sum(instance_losses)/len(instance_losses), '\n')
