@@ -67,7 +67,7 @@ class Capsule:
         # This is only allowed to be called
         # on first capsule of the network !
         assert len(self.groups) == 1
-        for group in self.groups: group.rec(time).state = x
+        for group in self.groups: group.start_with(time=time, x=x)
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

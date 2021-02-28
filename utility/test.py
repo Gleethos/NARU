@@ -90,7 +90,7 @@ def test_2():
     )
     print(model.str())
 
-    data = ['a b c'.split(), 'c b a'.split()]
+    data = ['b a b c'.split(), 'c c b a'.split()]
     optimizer = torch.optim.Adam(model.get_params(), lr=0.0001)
     encoder = TestEncoder()
 

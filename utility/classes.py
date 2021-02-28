@@ -121,6 +121,7 @@ class Route:
         g = (r.matmul(self.Wgr) + h.matmul(self.Wgh)) / 2
         m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
         g = sig(g)
+        if not 0 <= g <= 1: print('Illegal gate:', g)
         assert 0 <= g <= 1  # Sigmoid should be within bounds!
         m.g = g.mean().item()  # g is used for routing! Largest gate wins!
         m.z = r.matmul(self.Wr) # z is saved for back-prop.
@@ -217,7 +218,9 @@ class Group(Recorder):
         if moment.error is None:
             self.rec(time).error = e
             self.rec(time).error_count = moment.error_count + 1  # -> incrementing the counter! (for normalization)
-            assert not torch.equal(moment.state, moment.state * 0) or moment.is_sleeping
+            # Rule: A group can only have a non zero state if it is sleeping
+            state_is_all_zero = torch.equal(moment.state, moment.state * 0)
+            assert state_is_all_zero and moment.is_sleeping or not moment.is_sleeping
         else:
             moment.error = moment.error + e
             moment.error_count = moment.error_count + 1 #-> incrementing the counter! (for normalization)
