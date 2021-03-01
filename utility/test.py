@@ -99,12 +99,14 @@ def test_2():
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=data[:1],
+            training_data=data[:2],
             test_data=data[:1],
-            epochs=200
+            epochs=444
         )
         print(choice_matrices)
 
     print('FFNN-NARU TEST DONE!')
 
 test_2()
+
+print('DONE!!')

@@ -278,6 +278,7 @@ class Group(Recorder):
         assert time >= 0
         this_is_start = len(self.from_conns) == 0
         this_is_end = len(self.to_conns) == 0
+        assert not (this_is_start and this_is_end)
         current_moment = self.at(time)
         number_of_connections = self.number_of_connections()
 
@@ -327,10 +328,13 @@ class Group(Recorder):
                 z = z + self.bias  # Bias is optional!
             z = z / number_of_connections
 
-            if this_is_end:
+            if this_is_start:
+                current_moment.state = z  # If this is not the start of the network... : Activate!
+                current_moment.derivative = (z * 0 + 1) / number_of_connections
+            elif this_is_end:
                 current_moment.state = z  # If this is not the end of the network... : No activation!!
                 current_moment.derivative = 1 / number_of_connections # The derivative is simple because no function...
-            elif not this_is_start:
+            else:
                 current_moment.state = activation(x=z)  # If this is not the start of the network... : Activate!
                 current_moment.derivative = activation(x=z, derive=True) / number_of_connections
 
@@ -343,6 +347,7 @@ class Group(Recorder):
         assert time >= 0
         this_is_start = len(self.from_conns) == 0
         this_is_end = len(self.to_conns) == 0
+        assert not (this_is_start and this_is_end)
 
         current_moment = self.at(time)
 
@@ -351,10 +356,9 @@ class Group(Recorder):
             current_error: torch.Tensor = current_moment.error
             #print('Was awake, now backprop:', self.nid(), '-', time)
             # Multiplying with the partial derivative of the activation of this group.
-            if not this_is_start:
-                current_error = current_error * current_moment.derivative
-                if len(self.to_conns) > 0:
-                    assert len([r for r, g in self.to_conns.items() if not r.at(time+1).is_sleeping]) == 1
+            current_error = current_error * current_moment.derivative
+            if len(self.to_conns) > 0:
+                assert len([r for r, g in self.to_conns.items() if not r.at(time+1).is_sleeping]) == 1
 
             assert current_moment.error_count > 0 # This node should already have an error! (because of route connection...)
 

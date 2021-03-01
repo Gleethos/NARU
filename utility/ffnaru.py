@@ -131,7 +131,7 @@ class Network:
         reverse_choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
-        print('Forward pass:')
+        #print('Forward pass:')
         for time in range(len(vectors)+(self.depth-1)):
             #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
             if time < len(vectors):
@@ -145,7 +145,7 @@ class Network:
                 index = capsule.forward(time)
                 choice_indices.append(index)
             choice_matrix.append(choice_indices)
-            print('Forward,  t'+str(time)+':', choice_indices)
+            #print('Forward,  t'+str(time)+':', choice_indices)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
@@ -156,7 +156,7 @@ class Network:
                 else:
                     expected = vectors[0] * 0.0
                 progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 100 + 900 * ( 1 - progress )**4
+                dampener = 10 + 990 * ( 1 - progress )**4
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
@@ -164,7 +164,7 @@ class Network:
                 #out_group.add_error(e, time)
                 out_group.at(time).error = -e
                 out_group.at(time).error_count = 1
-                print('Added error! v', time-(self.depth-1), predicted)
+                #print('Added error! v', time-(self.depth-1), predicted)
                 losses.append(self.loss.loss)
                 #print('Loss at ', time, ':', self.loss.loss)
             else:
@@ -183,7 +183,7 @@ class Network:
             for i, capsule in enumerate(self._capsules):
                 index = capsule.backward(time)
                 choice_indices.append(index)
-            print('Backward, t'+str(time)+':', choice_indices)
+            #print('Backward, t'+str(time)+':', choice_indices)
             reverse_choice_matrix.append(choice_indices)
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 

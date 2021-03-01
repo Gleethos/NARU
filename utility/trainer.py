@@ -23,12 +23,11 @@ def exec_trial(
     sentence_losses = []
     validation_losses = []
     choice_matrices = dict()
-
+    previous_matrices = None
     for epoch in range(epochs):
         # The neural network should learn data more randomly:
         random.Random(666 + epoch + 999).shuffle(training_data)  # ... so we shuffle it! :)
 
-        #optimizer.zero_grad()
 
         for i, sentence in enumerate(training_data):
             print('Training on sentence', i, ': "', sentence, '"')
@@ -38,15 +37,23 @@ def exec_trial(
             instance_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
 
-        for W in model.get_params(): W.grad /= (len(training_data))
+        #for W in model.get_params(): W.grad /= (len(training_data))
 
         for W in model.get_params():
             W += W.grad
             W.grad *= 0
         #optimizer.step()
+        #optimizer.zero_grad()
 
         print('===================================================')
         print('Epoch', epoch, ' done! loss =', instance_losses[len(instance_losses) - 1],'; Avg =', sum(instance_losses)/len(instance_losses), '\n')
+
+        if previous_matrices is not None:
+            for s in choice_matrices.keys():
+                if choice_matrices[s] != previous_matrices[s]:
+                    print('Choices changed for: "'+s+'":', choice_matrices[s],'!=',previous_matrices[s])
+
+        previous_matrices = choice_matrices.copy()
 
         if test_data is not None:
             sum_loss = 0
