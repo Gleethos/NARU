@@ -1,8 +1,8 @@
 
-from collections import defaultdict
 import threading
+from collections import defaultdict
+
 import torch
-import copy
 
 CONTEXT = threading.local()
 CONTEXT.recorders = []
@@ -65,7 +65,7 @@ class Recorder:
             time -= 1
             moment = self.history[time]
             is_record = moment.is_record
-            if time < 0 : # first time step is recorded by default!
+            if time < 0: # first time step is recorded by default!
                 self.history[-1] = self.history[-1]
                 self.history[-1].is_record = True
                 return self.history[-1]
@@ -79,7 +79,7 @@ class Recorder:
     def rec(self, time: int):
         if self.time_restrictions is not None: assert time in self.time_restrictions
         if not self.history[time].is_record:
-            self.history[time] = self.history[time]#self.latest(time)#copy.copy(self.latest(time))  # new entry (new Moment object)
+            self.history[time] = self.history[time]
             self.history[time].time = time
         self.history[time].is_record = True
         return self.history[time]
@@ -118,28 +118,26 @@ class Route:
 
     def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
         m = Moment()
-        g = (r.matmul(self.Wgr) + h.matmul(self.Wgh)) / 2
+        g = ( r @ self.Wgr + h @ self.Wgh ) / 2
         m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
         g = sig(g)
         if not 0 <= g <= 1: print('Illegal gate:', g)
         assert 0 <= g <= 1  # Sigmoid should be within bounds!
         m.g = g.mean().item()  # g is used for routing! Largest gate wins!
-        m.z = r.matmul(self.Wr) # z is saved for back-prop.
-        c = g * m.z
+        m.z = r @ self.Wr # z is saved for back-prop.
         rec[self] = m
-        return c
+        return g * m.z # Returning vector "c", the gated connection vector!
 
     def backward(self, e_c: torch.Tensor, rec: dict, r: torch.Tensor, h: torch.Tensor):
         m = rec[self]
-        self.Wr.grad += r.T.matmul(e_c * m.g)
-        self.Wr.grad += r.T.matmul(e_c * m.g)
-        g_r = e_c.matmul(self.Wr.T)
-        e_g = e_c.matmul(m.z.T) * m.pd_g
-        self.Wgr.grad += r.T.matmul(e_g)
-        self.Wgh.grad += h.T.matmul(e_g)
-        g_r += e_g.matmul(self.Wgr.T)
-        g_h = e_g.matmul(self.Wgh.T)
-        return g_h, g_r
+        self.Wr.grad += (r.T * 0 +1) @ (e_c * m.g)
+        e_r = (e_c * m.g) @ self.Wr.T # backprop from c to r
+        e_g = (e_c @ m.z.T) * m.pd_g # Remember: z = r @ self.Wr
+        self.Wgr.grad += e_g#r.T @ e_g
+        self.Wgh.grad += e_g#h.T @ e_g
+        e_r += e_g @ self.Wgr.T
+        e_h = e_g @ self.Wgh.T
+        return e_h, e_r
 
 
 print('Route loaded! Unit-Testing now...')
@@ -155,20 +153,24 @@ assert len(CONTEXT.recorders) == 0
 
 r, h = torch.ones(1, 3), torch.ones(1, 2)
 
-#c = route.forward(h, r, 0)
-#assert str(c) == 'tensor([[ 0.1663, -0.0411]])'
+rec = dict()
 
-#g_h, g_r = route.backward(
-#    torch.tensor([[-1.0, 1.0]]), 0,
-#    h=torch.tensor([[2.0, -3.0]]),
-#    r=torch.tensor([[-1.0, 4.0, 2.0]])
-#)
-#assert str(g_h) == 'tensor([[-0.0995,  0.1821]])'
-#assert str(g_r) == 'tensor([[ 1.0981, -2.0502,  0.3621]])'
+c = route.forward(h, r, rec)
 
-#assert str(route.Wgh.grad) == "tensor([[-0.2689],\n        [ 0.4033]])"
-#assert str(route.Wgr.grad) == "tensor([[ 0.1344],\n        [-0.5378],\n        [-0.2689]])"
-#assert str(route.Wr.grad) == "tensor([[ 0.3515, -0.3515],\n        [-1.4062,  1.4062],\n        [-0.7031,  0.7031]])"
+assert str(c) == 'tensor([[ 0.2006, -0.0495]])'
+
+g_h, g_r = route.backward(
+    e_c=torch.tensor([[-1.0, 1.0]]),
+    rec=rec,
+    h=torch.tensor([[2.0, -3.0]]),
+    r=torch.tensor([[-1.0, 4.0, 2.0]])
+)
+
+assert str(g_h) == 'tensor([[-0.0533,  0.0975]])'
+assert str(g_r) == 'tensor([[ 0.4656, -0.8730,  0.1571]])'
+#assert str(route.Wgh.grad) == "tensor([[-0.1440],\n        [ 0.2161]])"
+#assert str(route.Wgr.grad) == "tensor([[ 0.0720],\n        [-0.2881],\n        [-0.1440]])"
+#assert str(route.Wr.grad) == "tensor([[ 0.4241, -0.4241],\n        [-1.6962,  1.6962],\n        [-0.8481,  0.8481]])"
 
 del route, r, h#, c, g_r, g_h
 CONTEXT.recorders = []
@@ -537,7 +539,7 @@ class Loss:
     def __call__(self, tensor : torch.Tensor, target : torch.Tensor):
         clone = tensor.clone()
         clone.requires_grad = True
-        self.loss = self.mse(clone, target)
+        self.loss = self.mse(input=clone, target=target)
         self.loss.backward()
         self.loss = self.loss.item()
         return clone.grad

@@ -25,7 +25,7 @@ class Capsule:
                 actives.append(group.index)
 
         if len(actives) == 0: actives.append(-1)
-        assert len(actives) == 1
+        assert len(actives) == 1 # Ths might fail when the recorders have not been cleared!!!
         return actives[0]
 
     def backward(self, time):
@@ -150,19 +150,16 @@ class Network:
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
                 assert not out_group.at(time).is_sleeping
-                vector_index = time-(self.depth-2)
-                if 0 <= vector_index < len(vectors):
-                    expected = vectors[vector_index]
-                else:
-                    expected = vectors[0] * 0.0
+                vector_index = time-(self.depth-1)
+                expected = vectors[vector_index]
                 progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 10 + 990 * ( 1 - progress )**4
+                dampener = 1 + 9 * ( 1 - progress )**2
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
                 e = e / dampener
                 #out_group.add_error(e, time)
-                out_group.at(time).error = -e
+                out_group.at(time).error = e
                 out_group.at(time).error_count = 1
                 #print('Added error! v', time-(self.depth-1), predicted)
                 losses.append(self.loss.loss)
@@ -193,17 +190,67 @@ class Network:
         assert choice_matrix == reverse_choice_matrix
         return choice_matrix, losses
 
+    # V2:
+    def train_with_autograd_on(self, vectors):
+        losses = []
+        choice_matrix = []
+        in_group = self._capsules[0]
+        out_group = self._capsules[len(self._capsules)-1].groups[0]
+        #print('Forward pass:')
+        for time in range(len(vectors)+(self.depth-1)):
+            #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
+            if time < len(vectors):
+                in_group.start_with(time, vectors[time])
+
+            choice_indices = []
+            for capsule in self._capsules:
+                index = capsule.forward(time)
+                choice_indices.append(index)
+            choice_matrix.append(choice_indices)
+            #print('Forward,  t'+str(time)+':', choice_indices)
+
+            # There is a time delay as large as the network is long:
+            if time >= self.depth - 1:
+                assert not out_group.at(time).is_sleeping
+
+                vector_index = time-(self.depth-1) #-2
+                expected = vectors[vector_index]
+
+                progress = (time - (self.depth - 1)) / (len(vectors)-1)
+                dampener = 1 + 9 * ( 1 - progress )**2
+                predicted = out_group.latest(time).state
+                loss = torch.sum( (predicted - expected)**2 ) / torch.numel(predicted)
+                loss = loss / dampener
+                losses.append(loss)
+            else:
+                assert out_group.at(time).is_sleeping
+
+        assert len(losses) == len(vectors)
+
+        total_loss = sum(losses)/len(losses)
+        total_loss.backward()
+
+        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
+        return choice_matrix, losses
+
+
     def pred(self, vectors):
         preds = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules) - 1].groups[0]
-        for time in range(len(vectors) + self.depth):
+        for time in range(len(vectors) + (self.depth-1)):
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
 
-            for capsule in self._capsules: capsule.forward(time)
+            for capsule in self._capsules:
+                capsule.forward(time)
 
-            if time >= self.depth: preds.append(out_group.latest(time).state)
+            # There is a time delay as large as the network is long:
+            if time >= self.depth-1:
+                preds.append(out_group.at(time).state)
+                assert out_group.at(time).is_sleeping is False
+            else:
+                assert out_group.at(time).is_sleeping is True
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the prediction!
         return preds
