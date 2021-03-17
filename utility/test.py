@@ -3,14 +3,15 @@ from utility.embedding import Encoder
 import torch
 from utility.ffnaru import Network
 from utility.data_loader import load_jokes
-from utility.trainer import exec_trial, exec_trial_with_autograd
+from utility.trainer import exec_trial_with_autograd
 from utility.persistence import save_params, load_params
 from utility.classes import CONTEXT, Route
 
 
 # ---------------------------------------------------------------------
-def test_1():
 
+# Uses PyTorchs auto-grad:
+def test_with_autograd_on_jokes():
     CONTEXT.BPTT_limit = 10 #10
 
     model = Network( # feed-forward-NARU
@@ -22,6 +23,7 @@ def test_1():
         D_out=50,
         with_bias=False
     )
+    for W in model.get_params(): W.requires_grad = True
 
     jokes = load_jokes()
     optimizer = torch.optim.Adam(model.get_params(), lr=0.01)
@@ -35,7 +37,7 @@ def test_1():
     #model.set_params(load_params('models/test_model/'))
 
     for i in range(1):
-        choice_matrices = exec_trial(
+        choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
@@ -45,8 +47,8 @@ def test_1():
         )
         print(choice_matrices)
         # SAVING PARAMETERS:
-        target_folder = 'models/test_model/' # 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
-        save_params( model.get_params(), target_folder )
+        #target_folder = 'models/test_model/' # 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
+        #save_params( model.get_params(), target_folder )
 
 
     print('FFNN-NARU TEST DONE!')
@@ -54,7 +56,6 @@ def test_1():
     test_sentence = encoder.sequence_words_in('What did the bartender say to the jumper cables ?'.split())
     preds = model.pred(test_sentence)
     print(' '.join(encoder.sequence_vecs_in(preds)))
-
 
 
 class TestEncoder:
@@ -75,7 +76,7 @@ class TestEncoder:
 
 
 
-def test_2():
+def test_custom_backprop_on_dummy_data():
     CONTEXT.BPTT_limit = 10  # 10
     model = Network(  # feed-forward-NARU
         depth=4,
@@ -90,20 +91,21 @@ def test_2():
     optimizer = torch.optim.Adam(model.get_params(), lr=0.1)
     encoder = TestEncoder()
     for i in range(1):
-        choice_matrices = exec_trial(
+        choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
             training_data=data[:1],
             test_data=data[:1],
-            epochs=500
+            epochs=500,
+            use_custom_backprop=True
         )
         print(choice_matrices)
     print('FFNN-NARU TEST DONE!')
 
 
 
-def test_with_autograd():
+def test_with_autograd_on_dummy_data():
     CONTEXT.BPTT_limit = 10  # 10
     model = Network(  # feed-forward-NARU
         depth=4,
@@ -129,13 +131,10 @@ def test_with_autograd():
         )
         print(choice_matrices)
     pred = model.pred(encoder.sequence_words_in('b c b a c'.split()))
-    print(pred)
+    print('\n'.join([str(p.tolist()) for p in pred]))
     print('FFNN-NARU TEST DONE!')
 
 
-
-
-print('DONE!!')
 
 def test_custom_mse():
     test_c = torch.tensor([[0.2006, -0.0495]])
@@ -147,7 +146,7 @@ def test_custom_mse():
     assert str(test_c.grad) == str(torch.tensor([[0.2006, -0.0495]]) - torch.tensor([[-1.0, 1.0]]))
 
 
-def test_3():
+def test_custom_backprop_for_Route():
     test_custom_mse()
     torch.manual_seed(66642999)
 
@@ -194,7 +193,7 @@ def test_3():
     assert str(route.Wgr.grad.tolist()) == "[[0.08430635929107666], [0.08430635929107666], [0.08430635929107666]]"
     assert str(route.Wr.grad .tolist()) == "[[0.5091030597686768, -0.44506365060806274], [0.5091030597686768, -0.44506365060806274], [0.5091030597686768, -0.44506365060806274]]"
 
-
-#test_3()
-#test_2()
-test_with_autograd()
+#test_with_autograd_on_jokes()
+#test_custom_backprop_for_Route()
+#test_custom_backprop_on_dummy_data()
+test_with_autograd_on_dummy_data()

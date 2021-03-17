@@ -5,6 +5,14 @@ from utility.classes import CONTEXT
 import math
 import torch
 
+
+def dampener_of(current_index: int, num_of_el: int):
+    current_index, num_of_el = min(current_index, 13), min(num_of_el, 13)
+    progress = current_index / num_of_el
+    dampener = 1 + 999 * (1 - progress) ** 4
+    return dampener
+
+
 # -------------------------------------------------------------------------------------------------------------------- #
 # CAPSULE
 
@@ -125,14 +133,18 @@ class Network:
                     g.append((end * ratio) + max * (1 - ratio))
         return g
 
+    """
+        The following performs back-propagation not via the auto-grad system provided
+        by PyTorch, but via a custom implementation! 
+    """
     def train_on(self, vectors):
         losses = []
         choice_matrix = []
         reverse_choice_matrix = []
-        in_group = self._capsules[0]
-        out_group = self._capsules[len(self._capsules)-1].groups[0]
-        #print('Forward pass:')
-        for time in range(len(vectors)+(self.depth-1)):
+        in_group = self._capsules[0] # The first node in the meta-net!
+        out_group = self._capsules[len(self._capsules)-1].groups[0] # The last one which produces the output!
+
+        for time in range( len(vectors) - 1 + ( self.depth - 1 ) ):
             #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
@@ -150,10 +162,10 @@ class Network:
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
                 assert not out_group.at(time).is_sleeping
-                vector_index = time-(self.depth-1)
+                vector_index = time - self.depth + 2
+                assert vector_index > 0
                 expected = vectors[vector_index]
-                progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 1 + 9 * ( 1 - progress )**2
+                dampener = dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
                 #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
                 predicted = out_group.latest(time).state
                 e = self.loss(predicted, expected)
@@ -169,25 +181,26 @@ class Network:
 
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
-        assert len(losses) == len(vectors)
+        assert len(losses) == len(vectors) - 1
         last_time = time
 
-        for back_counter in range(len(vectors)+self.depth-1):
+        # The following loop performs the back-propagation by calling the capsules of this meta-net.
+        for back_counter in range( len(vectors) - 1 + self.depth - 1 ):
             time = last_time - back_counter
-            #print('backprop at:', time, '; Back-counter:', back_counter)
+            # Now we set some restrictions for the recorders to ensure validity:
             for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
             choice_indices = []
             for i, capsule in enumerate(self._capsules):
-                index = capsule.backward(time)
-                choice_indices.append(index)
-            #print('Backward, t'+str(time)+':', choice_indices)
+                choice_indices.append(capsule.backward(time)) # We record the chosen index which will be used later!
+
             reverse_choice_matrix.append(choice_indices)
+            # And we delete the restrictions after we are done:
             for recorder in CONTEXT.recorders: recorder.time_restrictions = None
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
 
         reverse_choice_matrix.reverse()
-        assert choice_matrix == reverse_choice_matrix
+        #assert choice_matrix == reverse_choice_matrix
         return choice_matrix, losses
 
     # V2:
@@ -196,28 +209,25 @@ class Network:
         choice_matrix = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules)-1].groups[0]
-        #print('Forward pass:')
-        for time in range(len(vectors)+(self.depth-1)):
-            #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
-            if time < len(vectors):
-                in_group.start_with(time, vectors[time])
+
+        for time in range(len(vectors)-1+(self.depth-1)):
+
+            if time < len(vectors): in_group.start_with(time, vectors[time])
 
             choice_indices = []
             for capsule in self._capsules:
                 index = capsule.forward(time)
                 choice_indices.append(index)
             choice_matrix.append(choice_indices)
-            #print('Forward,  t'+str(time)+':', choice_indices)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
                 assert not out_group.at(time).is_sleeping
-
-                vector_index = time-(self.depth-1) #-2
+                vector_index = time - self.depth + 2
+                assert vector_index > 0
                 expected = vectors[vector_index]
 
-                progress = (time - (self.depth - 1)) / (len(vectors)-1)
-                dampener = 1 + 9 * ( 1 - progress )**2
+                dampener = dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
                 predicted = out_group.latest(time).state
                 loss = torch.sum( (predicted - expected)**2 ) / torch.numel(predicted)
                 loss = loss / dampener
@@ -225,20 +235,20 @@ class Network:
             else:
                 assert out_group.at(time).is_sleeping
 
-        assert len(losses) == len(vectors)
+        assert len(losses) == len(vectors) - 1
 
         total_loss = sum(losses)/len(losses)
         total_loss.backward()
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
-        return choice_matrix, losses
+        return choice_matrix, [l.item() for l in losses]
 
 
     def pred(self, vectors):
         preds = []
         in_group = self._capsules[0]
         out_group = self._capsules[len(self._capsules) - 1].groups[0]
-        for time in range(len(vectors) + (self.depth-1)):
+        for time in range(len(vectors) - 1 + (self.depth-1)):
             if time < len(vectors):
                 in_group.start_with(time, vectors[time])
 
