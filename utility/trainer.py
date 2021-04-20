@@ -2,7 +2,8 @@
 import torch
 import random
 import matplotlib.pyplot as plt
-
+import numpy as np
+from utility.net_analysis import epoch_deviations
 
 def exec_trial_with_autograd(
         model,
@@ -10,8 +11,7 @@ def exec_trial_with_autograd(
         encoder,
         training_data,
         test_data=None,
-        epochs=10,
-        use_custom_backprop = False
+        epochs=10
 ):
     print('\nStart trial now!')
     print('Number of training samples:', len(training_data), '; Number of test samples:', len(test_data), ';')
@@ -22,11 +22,13 @@ def exec_trial_with_autograd(
 
     epoch_losses = []
     validation_losses = []
-    choice_matrices = dict()
+    all_choices = []
     previous_matrices = None
     choice_changes = []
 
     for epoch in range(epochs):
+        choice_matrices = dict()
+
         # The neural network should learn data more randomly:
         random.Random(666 + epoch + 999).shuffle(training_data)  # ... so we shuffle it! :)
         instance_losses = []
@@ -34,8 +36,7 @@ def exec_trial_with_autograd(
 
         for i, sentence in enumerate(training_data):
             vectors = encoder.sequence_words_in(sentence)
-            if not use_custom_backprop: choice_matrix, losses = model.train_with_autograd_on(vectors)
-            else: choice_matrix, losses = model.train_on(vectors)
+            choice_matrix, losses = model.train_with_autograd_on(vectors)
             sentence_losses.append(losses)
             instance_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
@@ -48,9 +49,13 @@ def exec_trial_with_autograd(
 
         if previous_matrices is not None:
             choice_changes.append(
-                number_of_changes(choice_matrices=choice_matrices, previous_matrices=previous_matrices)
+                number_of_changes(
+                    choice_matrices=choice_matrices,
+                    previous_matrices=previous_matrices
+                )
             )
 
+        all_choices.append(choice_matrices)
         previous_matrices = choice_matrices.copy()
 
         if test_data is not None:
@@ -61,17 +66,58 @@ def exec_trial_with_autograd(
     print('Trial done! \n===========')
     print('')
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
-    fig.suptitle('Horizontally stacked subplots')
+    fig.suptitle('')
     if test_data is not None:
-        ax1.plot(instance_losses, 'tab:green')
+        ax1.plot(validation_losses, 'tab:green')
 
     ax2.plot(epoch_losses, 'tab:blue')
     ax1.set_title('Validation Losses')
     ax2.set_title('Training Losses')
     plt.show()
 
-    plt.plot(choice_changes)
+    # Route changes:
+    plt.bar(
+        range(len(choice_changes)),
+        choice_changes,
+        width=1.0,
+        label='number of route changes per epoch',
+        fc=(0, 0, 1, 0.25)
+    )
+    # Smooth lines:
+    plt.plot(
+        moving_average(np.array(choice_changes), 32),
+        '--',
+        label='32 epoch moving average',
+        color='green'
+    )
+    # Title:
     plt.title('Route Changes')
+    plt.legend()
+    plt.show()
+
+    deviations = epoch_deviations(all_matrices=all_choices, sizes=model.heights)
+    plt.plot(
+        deviations,
+        '-',
+        label='routing bias',
+        color='blue'#fc=(0, 0, 1, 0.25)
+    )
+    # Smooth line:
+    plt.plot(
+        moving_average(np.array(deviations), 32),
+        '--',
+        label='32 epoch moving average',
+        color='green'
+    )
+    plt.plot(
+        moving_average(np.array(deviations), 64),
+        '-.',
+        label='64 epoch moving average',
+        color='red'
+    )
+    # Title:
+    plt.title('Routing Bias')
+    plt.legend()
     plt.show()
 
     return choice_matrices
@@ -91,6 +137,13 @@ def validate(model, encoder, validation_data):
         ).item()
     return sum_loss / len(validation_data)
 
+def moving_average(x, w):
+    filter = np.ones(w) / w
+    return np.convolve(
+                x,
+                filter,
+                'full' # Maybe use valid?
+            )
 
 def number_of_changes(choice_matrices: dict, previous_matrices: dict):
     changes = 0
@@ -98,6 +151,3 @@ def number_of_changes(choice_matrices: dict, previous_matrices: dict):
         if choice_matrices[s] != previous_matrices[s]:
             changes = changes + 1
     return changes
-
-
-

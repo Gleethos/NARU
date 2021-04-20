@@ -1,5 +1,5 @@
 
-from utility.classes import Group
+from utility.classes import Bundle
 from utility.classes import Loss
 from utility.classes import CONTEXT
 import math
@@ -21,44 +21,35 @@ class Capsule:
 
     def __init__(self, dimensionality, size: int, position=None, with_bias=False):
         self.position = position
-        self.groups = []
+        self.bundles = []
         for i in range(size):  # creating "size" number of groups for this capsule
-            self.groups.append(Group(i, dimensionality, position, with_bias=with_bias))
+            self.bundles.append(Bundle(i, dimensionality, position, with_bias=with_bias))
+
 
     def forward(self, time):
         actives = []
-        for i, group in enumerate(self.groups):
-            was_active, choice = group.forward(time)
+        for i, bundle in enumerate(self.bundles):
+            was_active, choice = bundle.forward(time)
             if was_active:
-                actives.append(group.index)
+                actives.append(bundle.index)
 
         if len(actives) == 0: actives.append(-1)
         assert len(actives) == 1 # Ths might fail when the recorders have not been cleared!!!
         return actives[0]
 
-    def backward(self, time):
-        actives = []
-        for i, group in enumerate(self.groups):
-            was_active, choice = group.backward(time)
-            if was_active:
-                actives.append(group.index)
-
-        if len(actives) == 0: actives.append(-1)
-        assert len(actives) == 1 # Only one group can be active in one capsule
-        return actives[0]
 
     # IO :
 
     def get_params(self):
         params = []
-        for group in self.groups:
-            params.extend(group.get_params())
+        for bundle in self.bundles:
+            params.extend(bundle.get_params())
         return params
 
     def str(self, level):
         asStr = level + 'Capsule: {\n'
-        asStr += (level + '   height: ' + str(len(self.groups)) + '\n')
-        for group in self.groups:
+        asStr += (level + '   height: ' + str(len(self.bundles)) + '\n')
+        for group in self.bundles:
             asStr += group.str(level + '   ')
         asStr += ('\n' + level + '};\n')
         return asStr
@@ -66,20 +57,22 @@ class Capsule:
     # Construction :
 
     def connect_forward(self, next_capsule, max_cone, step):
-        for group in self.groups:
-            group.connect_forward(next_capsule.groups, max_cone, step)
+        for bundle in self.bundles:
+            bundle.connect_forward(next_capsule.bundles, max_cone, step)
 
     # Execution :
 
-    def start_with(self, time, x):
+    def start_with(self, time: int, x: torch.Tensor):
         # This is only allowed to be called
         # on first capsule of the network !
-        assert len(self.groups) == 1
-        for group in self.groups: group.start_with(time=time, x=x)
+        assert len(self.bundles) == 1
+        for bundle in self.bundles: bundle.start_with(time=time, x=x)
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Network
+
+from utility.classes import activation
 
 class Network:
 
@@ -92,35 +85,37 @@ class Network:
                  D_out=10,
                  with_bias=False
                  ):
+        self.W_in = torch.rand(D_in, D_in, dtype=torch.float32, requires_grad=True)
+        self.b_in = torch.rand(1, D_in, dtype=torch.float32, requires_grad=True)
         self.loss = Loss()
         self.depth = depth
         assert depth > 3
         dims = [math.floor(float(x)) for x in self.girth_from(depth, D_in, max_dim, D_out)]
-        heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
-        self._capsules = []
+        self.heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
+        self.capsules = []
 
         for i in range(depth):
-            self._capsules.append(Capsule(dims[i], heights[i], position=i, with_bias=with_bias))
+            self.capsules.append(Capsule(dims[i], self.heights[i], position=i, with_bias=with_bias))
 
         for i in range(depth):
             if i != depth - 1:
-                assert len(self._capsules[i].groups) * max_cone >= len(self._capsules[i + 1].groups)
-                current_cone = min(len(self._capsules[i + 1].groups), max_cone)
-                step = max(1, int(len(self._capsules[i + 1].groups) / current_cone))
-                self._capsules[i].connect_forward(self._capsules[i + 1], current_cone, step)
+                assert len(self.capsules[i].bundles) * max_cone >= len(self.capsules[i + 1].bundles)
+                current_cone = min(len(self.capsules[i + 1].bundles), max_cone)
+                step = max(1, int(len(self.capsules[i + 1].bundles) / current_cone))
+                self.capsules[i].connect_forward(self.capsules[i + 1], current_cone, step)
 
     def str(self):
         asStr = ''
         asStr += 'Network: {\n'
         asStr += '   length: '
-        asStr += str(len(self._capsules)) + '\n'
+        asStr += str(len(self.capsules)) + '\n'
         level = '   '
-        for capsule in self._capsules:
+        for capsule in self.capsules:
             asStr += capsule.str(level)
         asStr += '\n};\n'
         return asStr
 
-    def girth_from(self, length, start, max, end):
+    def girth_from(self, length: int, start: int, max: int, end: int):
         g, mid = [], (length - 1) / 2
         for i in range(length):
             if math.fabs(mid - i) < 1: g.append(max)
@@ -133,107 +128,36 @@ class Network:
                     g.append((end * ratio) + max * (1 - ratio))
         return g
 
-    """
-        The following performs back-propagation not via the auto-grad system provided
-        by PyTorch, but via a custom implementation! 
-    """
-    def train_on(self, vectors):
-        losses = []
-        choice_matrix = []
-        reverse_choice_matrix = []
-        in_group = self._capsules[0] # The first node in the meta-net!
-        out_group = self._capsules[len(self._capsules)-1].groups[0] # The last one which produces the output!
-
-        for time in range( len(vectors) - 1 + ( self.depth - 1 ) ):
-            #print('\nStepping forward, current time:', time, '; Tokens:', len(vectors), '; Network depth:',self.depth,';')
-            if time < len(vectors):
-                in_group.start_with(time, vectors[time])
-
-            # The following will be used to perform assertions for validity:
-            for recorder in CONTEXT.recorders: recorder.time_restrictions = [time-1, time, time+1]
-
-            choice_indices = []
-            for capsule in self._capsules:
-                index = capsule.forward(time)
-                choice_indices.append(index)
-            choice_matrix.append(choice_indices)
-            #print('Forward,  t'+str(time)+':', choice_indices)
-
-            # There is a time delay as large as the network is long:
-            if time >= self.depth - 1:
-                assert not out_group.at(time).is_sleeping
-                vector_index = time - self.depth + 2
-                assert vector_index > 0
-                expected = vectors[vector_index]
-                dampener = dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
-                #print('Back-propagating now! Progress:', progress, '%; Dampener:', dampener, ';')
-                predicted = out_group.latest(time).state
-                e = self.loss(predicted, expected)
-                e = e / dampener
-                #out_group.add_error(e, time)
-                out_group.at(time).error = e
-                out_group.at(time).error_count = 1
-                #print('Added error! v', time-(self.depth-1), predicted)
-                losses.append(self.loss.loss)
-                #print('Loss at ', time, ':', self.loss.loss)
-            else:
-                assert out_group.at(time).is_sleeping
-
-            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
-
-        assert len(losses) == len(vectors) - 1
-        last_time = time
-
-        # The following loop performs the back-propagation by calling the capsules of this meta-net.
-        for back_counter in range( len(vectors) - 1 + self.depth - 1 ):
-            time = last_time - back_counter
-            # Now we set some restrictions for the recorders to ensure validity:
-            for recorder in CONTEXT.recorders: recorder.time_restrictions = [time - 1, time, time+1]
-            choice_indices = []
-            for i, capsule in enumerate(self._capsules):
-                choice_indices.append(capsule.backward(time)) # We record the chosen index which will be used later!
-
-            reverse_choice_matrix.append(choice_indices)
-            # And we delete the restrictions after we are done:
-            for recorder in CONTEXT.recorders: recorder.time_restrictions = None
-
-        for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
-
-        reverse_choice_matrix.reverse()
-        #assert choice_matrix == reverse_choice_matrix
-        return choice_matrix, losses
-
     # V2:
-    def train_with_autograd_on(self, vectors):
+    def train_with_autograd_on(self, vectors: list):
         losses = []
         choice_matrix = []
-        in_group = self._capsules[0]
-        out_group = self._capsules[len(self._capsules)-1].groups[0]
+        out_bundle = self.capsules[len(self.capsules) - 1].bundles[0]
 
         for time in range(len(vectors)-1+(self.depth-1)):
 
-            if time < len(vectors): in_group.start_with(time, vectors[time])
+            if time < len(vectors): self.start_with(time, vectors[time])
 
             choice_indices = []
-            for capsule in self._capsules:
+            for capsule in self.capsules:
                 index = capsule.forward(time)
                 choice_indices.append(index)
             choice_matrix.append(choice_indices)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth - 1:
-                assert not out_group.at(time).is_sleeping
+                assert not out_bundle.at(time).is_sleeping
                 vector_index = time - self.depth + 2
                 assert vector_index > 0
                 expected = vectors[vector_index]
 
                 dampener = dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
-                predicted = out_group.latest(time).state
+                predicted = out_bundle.latest(time).state
                 loss = torch.sum( (predicted - expected)**2 ) / torch.numel(predicted)
                 loss = loss / dampener
                 losses.append(loss)
             else:
-                assert out_group.at(time).is_sleeping
+                assert out_bundle.at(time).is_sleeping
 
         assert len(losses) == len(vectors) - 1
 
@@ -243,39 +167,44 @@ class Network:
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
         return choice_matrix, [l.item() for l in losses]
 
+    def start_with(self, time: int, x: torch.Tensor):
+        x = x.matmul(self.W_in) + self.b_in
+        x = activation(x, derive=False)
+        self.capsules[0].start_with(time, x)
 
-    def pred(self, vectors):
+    def pred(self, vectors: list):
         preds = []
-        in_group = self._capsules[0]
-        out_group = self._capsules[len(self._capsules) - 1].groups[0]
+        out_bundle = self.capsules[len(self.capsules) - 1].bundles[0]
         for time in range(len(vectors) - 1 + (self.depth-1)):
             if time < len(vectors):
-                in_group.start_with(time, vectors[time])
+                self.start_with(time, x=vectors[time])
 
-            for capsule in self._capsules:
+            for capsule in self.capsules:
                 capsule.forward(time)
 
             # There is a time delay as large as the network is long:
             if time >= self.depth-1:
-                preds.append(out_group.at(time).state)
-                assert out_group.at(time).is_sleeping is False
+                preds.append(out_bundle.at(time).state)
+                assert out_bundle.at(time).is_sleeping is False
             else:
-                assert out_group.at(time).is_sleeping is True
+                assert out_bundle.at(time).is_sleeping is True
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the prediction!
         return preds
 
     def get_params(self):
-        params = []
-        for c in self._capsules:
-            for g in c.groups:
+        params = [self.W_in, self.b_in]
+        for c in self.capsules:
+            for g in c.bundles:
                 params.extend(g.get_params())
         return params
 
-    def set_params(self, params):
+    def set_params(self, params: list):
         params = params.copy()
-        for c in self._capsules:
-            for g in c.groups: g.set_params(params)
+        self.W_in = params.pop(0)
+        self.b_in = params.pop(0)
+        for c in self.capsules:
+            for g in c.bundles: g.set_params(params)
         assert len(params) == 0
 
     # TESTING :
@@ -346,14 +275,14 @@ expected_structure = [
     }
 ]
 
-assert len(net._capsules) == len(expected_structure)
+assert len(net.capsules) == len(expected_structure)
 
-for ci in range(len(net._capsules)):
+for ci in range(len(net.capsules)):
     expected_capsule = expected_structure[ci]
-    given_capsule = net._capsules[ci]
-    assert expected_capsule['height'] == len(given_capsule.groups)
-    for gi in range(len(given_capsule.groups)):
-        given_group = given_capsule.groups[gi]
+    given_capsule = net.capsules[ci]
+    assert expected_capsule['height'] == len(given_capsule.bundles)
+    for gi in range(len(given_capsule.bundles)):
+        given_group = given_capsule.bundles[gi]
         assert given_group.targets == expected_capsule['targets'][gi]
         if isinstance(expected_capsule['from'], list):
             assert len(given_group.from_conns) == expected_capsule['from'][gi]

@@ -128,16 +128,6 @@ class Route:
         rec[self] = m
         return g * m.z # Returning vector "c", the gated connection vector!
 
-    def backward(self, e_c: torch.Tensor, rec: dict, r: torch.Tensor, h: torch.Tensor):
-        m = rec[self]
-        self.Wr.grad += (r.T * 0 +1) @ (e_c * m.g)
-        e_r = (e_c * m.g) @ self.Wr.T # backprop from c to r
-        e_g = (e_c @ m.z.T) * m.pd_g # Remember: z = r @ self.Wr
-        self.Wgr.grad += e_g#r.T @ e_g
-        self.Wgh.grad += e_g#h.T @ e_g
-        e_r += e_g @ self.Wgr.T
-        e_h = e_g @ self.Wgh.T
-        return e_h, e_r
 
 
 print('Route loaded! Unit-Testing now...')
@@ -158,19 +148,6 @@ rec = dict()
 c = route.forward(h, r, rec)
 
 assert str(c) == 'tensor([[ 0.2006, -0.0495]])'
-
-g_h, g_r = route.backward(
-    e_c=torch.tensor([[-1.0, 1.0]]),
-    rec=rec,
-    h=torch.tensor([[2.0, -3.0]]),
-    r=torch.tensor([[-1.0, 4.0, 2.0]])
-)
-
-assert str(g_h) == 'tensor([[-0.0533,  0.0975]])'
-assert str(g_r) == 'tensor([[ 0.4656, -0.8730,  0.1571]])'
-#assert str(route.Wgh.grad) == "tensor([[-0.1440],\n        [ 0.2161]])"
-#assert str(route.Wgr.grad) == "tensor([[ 0.0720],\n        [-0.2881],\n        [-0.1440]])"
-#assert str(route.Wr.grad) == "tensor([[ 0.4241, -0.4241],\n        [-1.6962,  1.6962],\n        [-0.8481,  0.8481]])"
 
 del route, r, h#, c, g_r, g_h
 CONTEXT.recorders = []
@@ -194,7 +171,7 @@ def default_moment(dimensionality: int):
     return m
 
 
-class Group(Recorder):
+class Bundle(Recorder):
 
     def __init__(self, index: int, dimensionality: int, position=None, with_bias=False):
         super().__init__(default_lambda=lambda: default_moment(dimensionality))
@@ -301,7 +278,7 @@ class Group(Recorder):
                 else: z = z + source.forward(h, r, rec=current_moment.conns)
 
             # Route activations :
-            best_target: Group = None
+            best_target: Bundle = None
             best_score: float = -1
             for group, route in self.to_conns.items():
                 h, r = self.latest(time-1).state, group.latest(time-1).state
@@ -343,73 +320,6 @@ class Group(Recorder):
             #print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
 
             return True, best_target  # The best group is being returned!
-        return False, None
-
-    def backward(self, time: int):
-        assert time >= 0
-        this_is_start = len(self.from_conns) == 0
-        this_is_end = len(self.to_conns) == 0
-        assert not (this_is_start and this_is_end)
-
-        current_moment = self.at(time)
-
-        if not current_moment.is_sleeping and current_moment.error is not None:  # Back-prop only when this group was active at that time!
-
-            current_error: torch.Tensor = current_moment.error
-            #print('Was awake, now backprop:', self.nid(), '-', time)
-            # Multiplying with the partial derivative of the activation of this group.
-            current_error = current_error * current_moment.derivative
-            if len(self.to_conns) > 0:
-                assert len([r for r, g in self.to_conns.items() if not r.at(time+1).is_sleeping]) == 1
-
-            assert current_moment.error_count > 0 # This node should already have an error! (because of route connection...)
-
-            # Normalization technique so that gradients do not explode:
-            #current_error = current_error / self.latest(time).error_count
-
-            # Resetting the error:
-            current_moment.error = None
-            current_moment.error_count = 0
-
-            if self.bias is not None and not this_is_end: # Bias is optional
-                self.bias.grad += current_error
-
-            # Source (error) bac-prop :
-            for group, source in self.from_conns.items(): # Distributing error to source groups...
-
-                g_h, g_r = source.backward(
-                    e_c=current_error,
-                    rec=current_moment.conns,
-                    r=group.latest(time - 1).state,  # Needed to calculate gradients of the weights!
-                    h=self.latest(time - 1).state  # Needed to calculate gradients of the weights!
-                )
-                group.add_error(g_r, time - 1)
-                # Accumulating g_h to self:
-                self.add_error(g_h, time - 1) # setting or accumulating the error!
-                #print('Back-Src: ',self.nid() + ' - t' + str(time), ': g_h=' + str(g_h), 'g_r=' + str(g_r))
-
-            # Route (error) back-prop :
-            for group, route in self.to_conns.items():  # Distributing error to route groups...
-
-                g_h, g_r = route.backward(
-                    e_c=current_error,
-                    rec=current_moment.conns,
-                    r=group.latest(time - 1).state,  # Needed to calculate gradients of the weights!
-                    h=self.latest(time - 1).state  # Needed to calculate gradients of the weights!
-                )
-                group.add_error(g_r, time - 1)
-
-                # Accumulating g_h to self:
-                self.add_error(g_h, time - 1)
-                #print('Back-Rte: ', self.nid() + ' - t' + str(time), ': g_h=' + str(g_h), 'g_r=' + str(g_r))
-
-            #print('Bwd-' + str(self.nid()) + '- e:' + str(current_error))
-
-            if this_is_end: return True, None
-            else:
-                found = [g for g, r in self.to_conns.items() if not g.at(time+1).is_sleeping]
-                assert len(found) == 1
-                return True, found[0]  # The best group is being returned!
         return False, None
 
 
@@ -476,33 +386,10 @@ def test_simple_net(group, other1, other2, output):
     assert output.latest(1).error_count == 0
     assert output.latest(2).error_count == 1
     assert output.latest(3).error_count == 0
-
-    output.backward(2) # backprop happens recursively!
-
-    #grad = str(next(iter(other1.from_conns.values())).Ws.grad)
-    #print(grad)
-    #assert grad in [
-    #    'tensor([[-0.0209,  0.0304, -0.4715],\n        [-0.0070,  0.0101, -0.1572],\n        [-0.0278,  0.0406, -0.6287]])',
-    #    'tensor([[-0.0417,  0.0608, -0.9431],\n        [-0.0139,  0.0203, -0.3144],\n        [-0.0556,  0.0811, -1.2574]])'
-    #]
-    #grad = str(next(iter(other2.from_conns.values())).Ws.grad)
-    #assert grad == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
-
-    assert str(next(iter(group.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
-    assert str(next(iter(group.to_conns.values())).Wgr.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
-    assert str(next(iter(group.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.],\n        [0., 0., 0.],\n        [0., 0., 0.]])'
-
-    assert str(next(iter(other1.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
-    assert str(next(iter(other1.to_conns.values())).Wgr.grad) == 'tensor([[0.]])'
-    assert str(next(iter(other1.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.]])'
-
-    assert str(next(iter(other2.to_conns.values())).Wgh.grad) == 'tensor([[0.],\n        [0.],\n        [0.]])'
-    assert str(next(iter(other2.to_conns.values())).Wgr.grad) == 'tensor([[0.]])'
-    assert str(next(iter(other2.to_conns.values())).Wr.grad) == 'tensor([[0., 0., 0.]])'
+ 
 
 
-
-group = Group(index=0, dimensionality=3)
+group = Bundle(index=0, dimensionality=3)
 
 assert group.index == 0
 assert group.dimensionality == 3
@@ -513,9 +400,9 @@ assert group.latest(0).error == None
 assert group.latest(0).error_count == 0
 assert group.latest != None
 
-other1 = Group(index=0,dimensionality=3)
-other2 = Group(index=1,dimensionality=3)
-output = Group(index=0,dimensionality=1)
+other1 = Bundle(index=0, dimensionality=3)
+other2 = Bundle(index=1, dimensionality=3)
+output = Bundle(index=0, dimensionality=1)
 
 test_simple_net(group, other1, other2, output)
 for r in CONTEXT.recorders: r.reset() # Resetting allows for a repeat of the test!
