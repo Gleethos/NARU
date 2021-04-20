@@ -16,7 +16,7 @@ def tokenize(text):
 
 
 def load_jokes():
-    df = pd.read_csv('data/jokes/reddit.csv', index_col='ID', header=0)
+    df = pd.read_csv('../data/jokes/reddit.csv', index_col='ID', header=0)
     jokes = df['Joke'].to_list()
     jokes = [tokenize(j) for j in jokes]
     return jokes

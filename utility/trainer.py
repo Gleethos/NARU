@@ -90,6 +90,8 @@ def exec_trial_with_autograd(
         label='32 epoch moving average',
         color='green'
     )
+    plt.xlabel("epoch")
+    plt.ylabel("number of route changes")
     # Title:
     plt.title('Route Changes')
     plt.legend()
@@ -115,6 +117,8 @@ def exec_trial_with_autograd(
         label='64 epoch moving average',
         color='red'
     )
+    plt.xlabel("epoch")
+    plt.ylabel("standard deviation")
     # Title:
     plt.title('Routing Bias')
     plt.legend()

@@ -16,24 +16,24 @@ def test_with_autograd_on_jokes():
 
     model = Network( # feed-forward-NARU
         depth=5,
-        max_height=10,
-        max_dim=64,
-        max_cone=5,
+        max_height=12,
+        max_dim=256,#64,
+        max_cone=6,
         D_in=50,
         D_out=50,
         with_bias=False
     )
     for W in model.get_params(): W.requires_grad = True
 
-    jokes = load_jokes()
-    optimizer = torch.optim.Adam(model.get_params(), lr=0.01)
+    jokes = load_jokes() # Total: 1592
+    optimizer = torch.optim.Adam(model.get_params(), lr=0.001)
     encoder = Encoder()
 
-    print(model.str())
-    print()
-    print(jokes[:10])
-    print()
-    print(jokes[10:15])
+    #print(model.str())
+    #print()
+    #print(jokes[:10])
+    #print()
+    #print(jokes[10:15])
 
     #save_params( [torch.range(0, 10, 3)], 'models/hey/' )
     #print(load_params('models/hey/'))
@@ -42,19 +42,19 @@ def test_with_autograd_on_jokes():
 
     #model.set_params(load_params('models/test_model/'))
 
-    for i in range(0):
+    for i in range(1):
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=jokes[:10],
-            test_data=jokes[10:15],
+            training_data=jokes[110:],
+            test_data=jokes[0:110],
             epochs=200
         )
         print(choice_matrices)
         # SAVING PARAMETERS:
-        #target_folder = 'models/test_model/' # 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
-        #save_params( model.get_params(), target_folder )
+        target_folder = '../models/test_model/' + 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
+        save_params( model.get_params(), target_folder )
 
 
     print('FFNN-NARU TEST DONE!')
