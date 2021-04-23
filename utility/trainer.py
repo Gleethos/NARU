@@ -141,13 +141,15 @@ def validate(model, encoder, validation_data):
         ).item()
     return sum_loss / len(validation_data)
 
+
 def moving_average(x, w):
     filter = np.ones(w) / w
     return np.convolve(
                 x,
                 filter,
-                'full' # Maybe use valid?
+                'valid' # Maybe use full?
             )
+
 
 def number_of_changes(choice_matrices: dict, previous_matrices: dict):
     changes = 0

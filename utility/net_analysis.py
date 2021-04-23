@@ -17,11 +17,13 @@ def total_deviation_for(epoch_matrices: dict, sizes: list):
 
     # Let's calculate the accumulated difference:
     total_deviation = 0
+    N = 0
     for i, total in enumerate(total_counts):
         for pos, count in relative_counts[i].items():
-            total_deviation += abs( expected_averages[i] - count )
+            total_deviation += abs( expected_averages[i] - count )**2
+            N += 1
 
-    return total_deviation
+    return (total_deviation / N) ** 0.5
 
 
 def choice_avg(matrix: list, sizes: list):
@@ -48,4 +50,4 @@ test_data = [
     {'he': [[0, -1], [0, 0], [1, 0], [-1, 0]], 'hu': [[0, -1], [1, 0], [1, 0], [-1, 0]]}
 ]
 
-assert epoch_deviations(all_matrices=test_data, sizes=[2, 2]) == [0.0, 2.0, 6.0]
+assert epoch_deviations(all_matrices=test_data, sizes=[2, 2]) == [0.0, 0.7071067811865476, 2.1213203435596424]

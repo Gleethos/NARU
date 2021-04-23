@@ -6,7 +6,7 @@ from utility.data_loader import load_jokes
 from utility.trainer import exec_trial_with_autograd
 from utility.persistence import save_params, load_params
 from utility.classes import CONTEXT, Route
-
+import time
 
 # ---------------------------------------------------------------------
 
@@ -15,8 +15,8 @@ def test_with_autograd_on_jokes():
     CONTEXT.BPTT_limit = 10 #10
 
     model = Network( # feed-forward-NARU
-        depth=5,
-        max_height=12,
+        depth=6,
+        max_height=15,
         max_dim=256,#64,
         max_cone=6,
         D_in=50,
@@ -26,10 +26,10 @@ def test_with_autograd_on_jokes():
     for W in model.get_params(): W.requires_grad = True
 
     jokes = load_jokes() # Total: 1592
-    optimizer = torch.optim.Adam(model.get_params(), lr=0.001)
+    optimizer = torch.optim.Adam(model.get_params(), lr=3e-4)
     encoder = Encoder()
 
-    #print(model.str())
+    print(model.str())
     #print()
     #print(jokes[:10])
     #print()
@@ -42,7 +42,7 @@ def test_with_autograd_on_jokes():
 
     #model.set_params(load_params('models/test_model/'))
 
-    for i in range(1):
+    for i in range(0):
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
@@ -53,7 +53,7 @@ def test_with_autograd_on_jokes():
         )
         print(choice_matrices)
         # SAVING PARAMETERS:
-        target_folder = '../models/test_model/' + 'models/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
+        target_folder = '../models/test_model/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
         save_params( model.get_params(), target_folder )
 
 
@@ -141,5 +141,5 @@ def test_with_autograd_on_dummy_data():
 
 
 
-test_with_autograd_on_jokes()
-#test_with_autograd_on_dummy_data()
+#test_with_autograd_on_jokes()
+test_with_autograd_on_dummy_data()
