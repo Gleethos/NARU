@@ -10,8 +10,8 @@ import time
 
 # ---------------------------------------------------------------------
 
-# Uses PyTorchs auto-grad:
-def test_with_autograd_on_jokes():
+
+def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
     CONTEXT.BPTT_limit = 10 #10
 
     model = Network( # feed-forward-NARU
@@ -30,10 +30,10 @@ def test_with_autograd_on_jokes():
     encoder = Encoder()
 
     print(model.str())
-    #print()
-    #print(jokes[:10])
-    #print()
-    #print(jokes[10:15])
+    print()
+    print(jokes[:10])
+    print()
+    print(jokes[10:15])
 
     #save_params( [torch.range(0, 10, 3)], 'models/hey/' )
     #print(load_params('models/hey/'))
@@ -92,8 +92,6 @@ class TestEncoder:
             d, i = self.tree.query(vec.view(-1).tolist())
             result.append(self.vec_i_to_word[i])
         return result
-
-
 
 
 def test_with_autograd_on_dummy_data():

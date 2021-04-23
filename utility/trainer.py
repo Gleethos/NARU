@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utility.net_analysis import epoch_deviations
 
+
 def exec_trial_with_autograd(
         model,
         optimizer,
