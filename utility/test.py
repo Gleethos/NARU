@@ -49,12 +49,13 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
             optimizer=optimizer,
             training_data=jokes[110:],
             test_data=jokes[0:110],
-            epochs=200
+            epochs=20,
+            batch_size=10
         )
         print(choice_matrices)
         # SAVING PARAMETERS:
-        target_folder = '../models/test_model/feed-forward-NARU_'+time.strftime("%Y%m%d-%H%M%S")+'/'
-        save_params( model.get_params(), target_folder )
+        target_folder = 'models/test_model/directed-NARU-net_'+time.strftime("%Y%m%d-%H%M%S")+'/'
+        save_params( model, target_folder )
 
 
     print('FFNN-NARU TEST DONE!')
@@ -116,7 +117,7 @@ def test_with_autograd_on_dummy_data():
             optimizer=optimizer,
             training_data=data[:4],
             test_data=data[:4],
-            epochs=350
+            epochs=35
         )
         print(choice_matrices)
 
@@ -139,5 +140,5 @@ def test_with_autograd_on_dummy_data():
 
 
 
-#test_with_autograd_on_jokes()
-test_with_autograd_on_dummy_data()
+test_with_autograd_on_jokes()
+#test_with_autograd_on_dummy_data()

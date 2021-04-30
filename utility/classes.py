@@ -216,12 +216,11 @@ class Bundle(Recorder):
         for node, source in self.from_conns.items(): source.set_params(params)
 
     def str(self, level: str):
-        return level + 'Group: {\n' + \
-               level + '   from: ' + str(len(self.from_conns)) + ',' + \
-               level + '   to: ' + str(len(self.to_conns)) + ',' + \
-               level + '   index: ' + str(self.index) + ', ' + 'dimensionality: ' + str(self.dimensionality) + ', ' + \
-               '   targets: ' + str(self.targets) + '\n' + \
-               level + '};\n'
+        return level + 'Bundle ' + str(self.index)+ ' : {' + \
+                       ' sources: ' + str(len(self.from_conns)) + ',' + \
+                       ' routes: ' + str(len(self.to_conns)) + ',' + \
+                       ' dimensionality: ' + str(self.dimensionality) + ', ' + \
+                       ' targets: ' + str(self.targets) + ' };\n'
 
     # Construction :
 
@@ -411,7 +410,7 @@ test_simple_net(group, other1, other2, output)
 del group, other1, other2, output
 
 CONTEXT.recorders = []
-print('Group Unit-Testing successful!')
+print('Bundle Unit-Testing successful!')
 print('==============================\n')
 
 # -----------------------------------------

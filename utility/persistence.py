@@ -6,13 +6,20 @@ from os import listdir
 from os.path import isfile, join
 
 
-def save_params(params: list, folder: str):
+def save_params(model, folder: str):
+    params: list = model.get_params()
     if not os.path.exists(os.path.dirname(folder)):
         try:
             os.makedirs(os.path.dirname(folder))
         except OSError as exc:  # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
+
+    print('Saving model to "', os.path.abspath(folder),'" now! ...')
+
+    with open(folder+'model-structure.txt', "w") as f:
+        f.write(model.str())
+        f.close()
 
     #for i, tensor in enumerate(params):
     #    filename = folder+'parameter_'+str(i)+'.pt'

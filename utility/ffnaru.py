@@ -51,7 +51,7 @@ class Capsule:
         asStr += (level + '   height: ' + str(len(self.bundles)) + '\n')
         for group in self.bundles:
             asStr += group.str(level + '   ')
-        asStr += ('\n' + level + '};\n')
+        asStr += (level + '};\n')
         return asStr
 
     # Construction :
@@ -85,6 +85,16 @@ class Network:
                  D_out=10,
                  with_bias=False
                  ):
+        self.ini_args = '(\n' \
+                        '    depth      = '+str(depth)+',      # The number of capsules\n' \
+                        '    max_height = '+str(max_height)+', \n' \
+                        '    max_dim    = '+str(max_dim)+',    \n' \
+                        '    max_cone   = '+str(max_cone)+',   \n' \
+                        '    D_in       = '+str(D_in)+',       \n' \
+                        '    D_out      = '+str(D_out)+',      \n' \
+                        '    with_bias  = '+str(with_bias)+'   \n' \
+                        ')'
+
         self.W_in = torch.rand(D_in, D_in, dtype=torch.float32, requires_grad=True)
         self.b_in = torch.rand(1, D_in, dtype=torch.float32, requires_grad=True)
         self.loss = Loss()
@@ -106,8 +116,7 @@ class Network:
 
     def str(self):
         asStr = ''
-        asStr += 'Network: {\n'
-        asStr += '   length: '
+        asStr += 'Network'+self.ini_args+': {\n'
         asStr += str(len(self.capsules)) + '\n'
         level = '   '
         for capsule in self.capsules:
@@ -219,7 +228,7 @@ net = Network(
     D_in=100,
     D_out=10,
 )
-# print(net.str())
+#print(net.str()) # TODO : asserts!
 
 expected_structure = [
     {
