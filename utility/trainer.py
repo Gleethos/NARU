@@ -50,7 +50,7 @@ def exec_trial_with_autograd(
         for sentence in training_data:
             choice_matrix, losses = model.train_with_autograd_on(encoder.sequence_words_in(sentence))
             choice_matrices[' '.join(sentence)] = choice_matrix
-        for W in model.get_params(): W /= len(training_data)
+        for W in model.get_params(): W.grad /= len(training_data)
         optimizer.step()
         optimizer.zero_grad()
 
@@ -66,7 +66,7 @@ def exec_trial_with_autograd(
             choice_matrices[' '.join(sentence)] = choice_matrix
 
         training_data.rotate(batch_step) # To enable mini batches!
-        for W in model.get_params(): W /= batch_size
+        for W in model.get_params(): W.grad /= batch_size
         optimizer.step()
         optimizer.zero_grad()
 
@@ -93,6 +93,9 @@ def exec_trial_with_autograd(
 
     print('Trial done! \n===========')
     print('')
+
+    # Training and Validation:
+    #------------------------
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
     fig.suptitle('')
     if test_data is not None:
@@ -104,6 +107,7 @@ def exec_trial_with_autograd(
     plt.show()
 
     # Route changes:
+    #--------------
     plt.bar(
         range(len(choice_changes)),
         choice_changes,
@@ -125,6 +129,8 @@ def exec_trial_with_autograd(
     plt.legend()
     plt.show()
 
+    # Routing Bias:
+    #-------------
     deviations = epoch_deviations(all_matrices=all_choices, sizes=model.heights)
     plt.plot(
         deviations,
@@ -149,6 +155,22 @@ def exec_trial_with_autograd(
     plt.ylabel("standard deviation")
     # Title:
     plt.title('Routing Bias')
+    plt.legend()
+    plt.show()
+
+    # Cumulative saturation:
+    #----------------------
+
+    plt.plot(
+        avg_saturation(choice_matrices=choice_matrices, sizes=model.heights),
+        '-',
+        label='cumulative network utilisation',
+        color='red'
+    )
+    plt.xlabel("token index")
+    plt.ylabel("cumulative network utilisation")
+    # Title:
+    plt.title('Average Cumulative Network Utilization')
     plt.legend()
     plt.show()
 
@@ -186,3 +208,42 @@ def number_of_changes(choice_matrices: dict, previous_matrices: dict):
             if choice_matrices[s] != previous_matrices[s]:
                 changes = changes + 1
     return changes
+
+
+def avg_saturation(choice_matrices: dict, sizes: list):
+    structure = [ [c != 1] * c for c in sizes ]
+    conditional = [item for sublist in structure for item in sublist].count(True)
+    choice_matrices = choice_matrices.values()
+    token_index_counts = dict()
+    for sentence in choice_matrices:
+        structure = [ [c != 1] * c for c in sizes ]
+        for i, token in enumerate(sentence):
+            if i not in token_index_counts:
+                token_index_counts[i] = []
+
+            for capsule_index, choice in enumerate(token):
+                structure[capsule_index][choice] = False
+
+            saturation = [item for sublist in structure for item in sublist].count(True)
+            token_index_counts[i].append(1-(saturation / conditional))
+
+
+    for i, v in token_index_counts.items():
+        token_index_counts[i] = (sum(v) / len(v))
+
+    return token_index_counts.values()
+
+print(avg_saturation(
+    {'f':[[0,1,2,0],[0,0,1,0]], 'k':[[0,0,2,0],[0,1,0,0]]},
+    [1, 2, 3, 1]
+))
+
+
+
+
+
+
+
+
+
+

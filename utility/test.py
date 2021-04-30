@@ -140,5 +140,5 @@ def test_with_autograd_on_dummy_data():
 
 
 
-test_with_autograd_on_jokes()
-#test_with_autograd_on_dummy_data()
+#test_with_autograd_on_jokes()
+test_with_autograd_on_dummy_data()
