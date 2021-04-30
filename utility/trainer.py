@@ -16,7 +16,7 @@ def exec_trial_with_autograd(
         test_data=None,
         epochs=10,
         batch_size=None,
-        do_ini_full_batch=False
+        do_ini_full_batch=True
 ):
     # The neural network should learn data more randomly:
     random.Random(666 + epochs + 999).shuffle(training_data)  # ... so we shuffle it! :)
@@ -47,17 +47,18 @@ def exec_trial_with_autograd(
     # This is so that we initialize the choice matrices dictionary before proceeding.
     # Having a full choice matrices dictionary will enable us to do route change stats!
     if do_ini_full_batch:
-        for sentence in training_data:
+        for epoch, sentence in enumerate(training_data):
             choice_matrix, losses = model.train_with_autograd_on(encoder.sequence_words_in(sentence))
             choice_matrices[' '.join(sentence)] = choice_matrix
+            print('Initial full batch training:', epoch+1, 'of', len(training_data), 'completed!')
         for W in model.get_params(): W.grad /= len(training_data)
         optimizer.step()
         optimizer.zero_grad()
+        print('Initial full batch training step done!\n...')
 
     for epoch in range(epochs):
 
         instance_losses = []
-
         batch = list(training_data)[:batch_size]
         for sentence in batch:
             vectors = encoder.sequence_words_in(sentence)

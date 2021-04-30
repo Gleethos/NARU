@@ -117,7 +117,6 @@ class Network:
     def str(self):
         asStr = ''
         asStr += 'Network'+self.ini_args+': {\n'
-        asStr += str(len(self.capsules)) + '\n'
         level = '   '
         for capsule in self.capsules:
             asStr += capsule.str(level)
@@ -229,6 +228,7 @@ net = Network(
     D_out=10,
 )
 #print(net.str()) # TODO : asserts!
+
 
 expected_structure = [
     {
