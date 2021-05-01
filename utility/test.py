@@ -4,7 +4,7 @@ import torch
 from utility.ffnaru import Network
 from utility.data_loader import load_jokes
 from utility.trainer import exec_trial_with_autograd
-from utility.persistence import save_params, load_params
+from utility.persistence import save_params
 from utility.classes import CONTEXT, Route
 import time
 
@@ -15,9 +15,9 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
     CONTEXT.BPTT_limit = 10 #10
 
     model = Network( # feed-forward-NARU
-        depth=6,
-        max_height=15,
-        max_dim=256,#64,
+        depth=7,
+        max_height=18,
+        max_dim=128,
         max_cone=6,
         D_in=50,
         D_out=50,
@@ -42,14 +42,14 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
 
     #model.set_params(load_params('models/test_model/'))
 
-    for i in range(0):
+    for i in range(1):
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=jokes[110:],
-            test_data=jokes[0:110],
-            epochs=20,
+            training_data=jokes[0:100],
+            test_data=jokes[100:110],
+            epochs=200,
             batch_size=10
         )
         print(choice_matrices)
@@ -58,11 +58,15 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
         save_params( model, target_folder )
 
 
-    print('FFNN-NARU TEST DONE!')
+    print('Training procedure completed!')
+    print('Testing now...')
 
     test_sentence = encoder.sequence_words_in('What did the bartender say to the jumper cables ?'.split())
     preds = model.pred(test_sentence)
-    print(' '.join(encoder.sequence_vecs_in(preds)))
+    print('Model predicted:')
+    print('"'+' '.join(encoder.sequence_vecs_in(preds))+'"')
+    print('Should be:')
+    print('"What did the bartender say to the jumper cables ?"')
 
 
 from scipy.spatial import KDTree

@@ -299,12 +299,12 @@ for ci in range(len(net.capsules)):
             assert len(given_group.from_conns) == expected_capsule['from']
         assert len(given_group.to_conns) == expected_capsule['to']
 
-net = Network(
-    depth=4,
-    max_height=3,
-    max_dim=500,
-    max_cone=8,
-    D_in=100,
-    D_out=10,
-)
-# print(net.str())
+#net = Network(
+#    depth=7,
+#    max_height=18,
+#    max_dim=128,
+#    max_cone=6,
+#    D_in=50,
+#    D_out=50,
+#)
+#print(net.str())

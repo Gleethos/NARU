@@ -6,6 +6,7 @@ import numpy as np
 from utility.net_analysis import epoch_deviations
 
 import collections
+import os
 
 
 def exec_trial_with_autograd(
@@ -16,8 +17,13 @@ def exec_trial_with_autograd(
         test_data=None,
         epochs=10,
         batch_size=None,
-        do_ini_full_batch=True
+        do_ini_full_batch=True,
+        plot_path='models/plots/'
 ):
+    assert epochs > 0
+    if not os.path.exists(plot_path):
+        os.makedirs(plot_path)
+
     # The neural network should learn data more randomly:
     random.Random(666 + epochs + 999).shuffle(training_data)  # ... so we shuffle it! :)
     batch_step = 0
@@ -38,10 +44,12 @@ def exec_trial_with_autograd(
 
     epoch_losses = []
     validation_losses = []
+    choice_changes = []
+    initial_network_utilisation = None
     all_choices = []
     previous_matrices = None
     choice_matrices = dict()
-    choice_changes = []
+
 
     # Optionally we can start off by doing a full batch training step!
     # This is so that we initialize the choice matrices dictionary before proceeding.
@@ -54,6 +62,7 @@ def exec_trial_with_autograd(
         for W in model.get_params(): W.grad /= len(training_data)
         optimizer.step()
         optimizer.zero_grad()
+        initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
         print('Initial full batch training step done!\n...')
 
     for epoch in range(epochs):
@@ -84,8 +93,10 @@ def exec_trial_with_autograd(
             )
 
         # Here we record choice matrices so that we can compare differences for the next epoch!
-        all_choices.append(choice_matrices)
         previous_matrices = choice_matrices.copy()
+        all_choices.append(previous_matrices)
+        if initial_network_utilisation is None:
+            initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
 
         if test_data is not None:
             validation_losses.append(
@@ -105,6 +116,8 @@ def exec_trial_with_autograd(
     ax2.plot(epoch_losses, 'tab:blue')
     ax1.set_title('Validation Losses')
     ax2.set_title('Training Losses')
+    plt.savefig(plot_path+'loss.png')
+    plt.savefig(plot_path+'loss.pdf')
     plt.show()
 
     # Route changes:
@@ -128,6 +141,8 @@ def exec_trial_with_autograd(
     # Title:
     plt.title('Route Changes')
     plt.legend()
+    plt.savefig(plot_path+'route-changes.png')
+    plt.savefig(plot_path+'route-changes.pdf')
     plt.show()
 
     # Routing Bias:
@@ -157,6 +172,8 @@ def exec_trial_with_autograd(
     # Title:
     plt.title('Routing Bias')
     plt.legend()
+    plt.savefig(plot_path+'routing-bias.png')
+    plt.savefig(plot_path+'routing-bias.pdf')
     plt.show()
 
     # Cumulative saturation:
@@ -166,13 +183,21 @@ def exec_trial_with_autograd(
         avg_saturation(choice_matrices=choice_matrices, sizes=model.heights),
         '-',
         label='cumulative network utilisation',
-        color='red'
+        color='green'
+    )
+    plt.plot(
+        initial_network_utilisation,
+        '-.',
+        label='initial cumulative network utilisation',
+        color='blue'
     )
     plt.xlabel("token index")
     plt.ylabel("cumulative network utilisation")
     # Title:
     plt.title('Average Cumulative Network Utilization')
     plt.legend()
+    plt.savefig(plot_path+'cumulative-network-utilisation.png')
+    plt.savefig(plot_path+'cumulative-network-utilisation.pdf')
     plt.show()
 
     return choice_matrices
@@ -234,10 +259,7 @@ def avg_saturation(choice_matrices: dict, sizes: list):
 
     return token_index_counts.values()
 
-print(avg_saturation(
-    {'f':[[0,1,2,0],[0,0,1,0]], 'k':[[0,0,2,0],[0,1,0,0]]},
-    [1, 2, 3, 1]
-))
+
 
 
 

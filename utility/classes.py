@@ -20,10 +20,15 @@ def sig(x, derive=False):
     else: return s
 
 
-def activation(x, derive=False):  # State of the Art activation function, SWISH
+def swish(x, derive=False):
     s = sig(x) * x # return sig(x, derive)
     if derive: return s + sig(x) * (1-s)
     else: return s
+
+
+def activation(x, derive=False):  # State of the Art activation function, SWISH
+    return torch.relu(x)
+    #return swish(x, derive=derive)
 
 
 def mish(x, derive=False):
