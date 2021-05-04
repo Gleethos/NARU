@@ -29,14 +29,6 @@ def exec_trial_with_autograd(
         path='models/'
 ):
     assert epochs > 0
-    plot_path = path + 'plots/'
-    data_path = path + 'data/'
-
-    if not os.path.exists(plot_path):
-        os.makedirs(plot_path)
-
-    if not os.path.exists(data_path):
-        os.makedirs(data_path)
 
     # The neural network should learn data more randomly:
     random.Random(666 + epochs + 999).shuffle(training_data)  # ... so we shuffle it! :)
@@ -120,6 +112,15 @@ def exec_trial_with_autograd(
     print('')
 
     # saving data now!
+
+    plot_path = path + 'plots/'
+    data_path = path + 'data/'
+
+    if not os.path.exists(plot_path):
+        os.makedirs(plot_path)
+
+    if not os.path.exists(data_path):
+        os.makedirs(data_path)
 
     with open(data_path+'/data.json', 'w') as fout:
         data = {
