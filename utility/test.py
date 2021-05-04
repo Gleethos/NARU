@@ -43,18 +43,19 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
     #model.set_params(load_params('models/test_model/'))
 
     for i in range(1):
+        target_folder = 'models/test_model/directed-NARU-net_' + time.strftime("%Y%m%d-%H%M%S") + '/'
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=jokes[0:100],
-            test_data=jokes[100:110],
+            training_data=jokes[100:],
+            test_data=jokes[0:100],
             epochs=200,
-            batch_size=10
+            batch_size=10,
+            path=target_folder
         )
-        print(choice_matrices)
+        print('Latest choice matrices:', choice_matrices)
         # SAVING PARAMETERS:
-        target_folder = 'models/test_model/directed-NARU-net_'+time.strftime("%Y%m%d-%H%M%S")+'/'
         save_params( model, target_folder )
 
 

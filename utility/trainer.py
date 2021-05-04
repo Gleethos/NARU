@@ -1,12 +1,20 @@
 
 import torch
 import random
-import matplotlib.pyplot as plt
-import numpy as np
-from utility.net_analysis import epoch_deviations
+from utility.net_analysis import load_and_plot, avg_saturation
 
 import collections
 import os
+import json
+
+
+def tame_gradients(
+        weights: list,
+        accumulation_count: int,
+        clip: float = 1.0
+):
+    for W in weights: W.grad /= accumulation_count
+    torch.nn.utils.clip_grad_norm_(weights, clip)
 
 
 def exec_trial_with_autograd(
@@ -18,11 +26,17 @@ def exec_trial_with_autograd(
         epochs=10,
         batch_size=None,
         do_ini_full_batch=True,
-        plot_path='models/plots/'
+        path='models/'
 ):
     assert epochs > 0
+    plot_path = path + 'plots/'
+    data_path = path + 'data/'
+
     if not os.path.exists(plot_path):
         os.makedirs(plot_path)
+
+    if not os.path.exists(data_path):
+        os.makedirs(data_path)
 
     # The neural network should learn data more randomly:
     random.Random(666 + epochs + 999).shuffle(training_data)  # ... so we shuffle it! :)
@@ -50,7 +64,6 @@ def exec_trial_with_autograd(
     previous_matrices = None
     choice_matrices = dict()
 
-
     # Optionally we can start off by doing a full batch training step!
     # This is so that we initialize the choice matrices dictionary before proceeding.
     # Having a full choice matrices dictionary will enable us to do route change stats!
@@ -59,7 +72,7 @@ def exec_trial_with_autograd(
             choice_matrix, losses = model.train_with_autograd_on(encoder.sequence_words_in(sentence))
             choice_matrices[' '.join(sentence)] = choice_matrix
             print('Initial full batch training:', epoch+1, 'of', len(training_data), 'completed!')
-        for W in model.get_params(): W.grad /= len(training_data)
+        tame_gradients(weights=model.get_params(), accumulation_count=len(training_data))
         optimizer.step()
         optimizer.zero_grad()
         initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
@@ -76,7 +89,7 @@ def exec_trial_with_autograd(
             choice_matrices[' '.join(sentence)] = choice_matrix
 
         training_data.rotate(batch_step) # To enable mini batches!
-        for W in model.get_params(): W.grad /= batch_size
+        tame_gradients(weights=model.get_params(), accumulation_count=batch_size)
         optimizer.step()
         optimizer.zero_grad()
 
@@ -106,99 +119,23 @@ def exec_trial_with_autograd(
     print('Trial done! \n===========')
     print('')
 
-    # Training and Validation:
-    #------------------------
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
-    fig.suptitle('')
-    if test_data is not None:
-        ax1.plot(validation_losses, 'tab:green')
+    # saving data now!
 
-    ax2.plot(epoch_losses, 'tab:blue')
-    ax1.set_title('Validation Losses')
-    ax2.set_title('Training Losses')
-    plt.savefig(plot_path+'loss.png')
-    plt.savefig(plot_path+'loss.pdf')
-    plt.show()
+    with open(data_path+'/data.json', 'w') as fout:
+        data = {
+            'loss':{'validation':validation_losses, 'training':epoch_losses},
+            'route-changes':choice_changes,
+            'full-record':all_choices,
+            'initial-utilisation':list(initial_network_utilisation),
+            'choice-matrices':choice_matrices,
+            'heights':model.heights
+        }
+        json.dump(data, fout, indent=4, sort_keys=True)
+        fout.close()
 
-    # Route changes:
-    #--------------
-    plt.bar(
-        range(len(choice_changes)),
-        choice_changes,
-        width=1.0,
-        label='number of route changes per epoch',
-        fc=(0, 0, 1, 0.25)
-    )
-    # Smooth lines:
-    plt.plot(
-        moving_average(np.array(choice_changes), 32),
-        '--',
-        label='32 epoch moving average',
-        color='green'
-    )
-    plt.xlabel("epoch")
-    plt.ylabel("number of route changes")
-    # Title:
-    plt.title('Route Changes')
-    plt.legend()
-    plt.savefig(plot_path+'route-changes.png')
-    plt.savefig(plot_path+'route-changes.pdf')
-    plt.show()
+    # done saving data!
 
-    # Routing Bias:
-    #-------------
-    deviations = epoch_deviations(all_matrices=all_choices, sizes=model.heights)
-    plt.plot(
-        deviations,
-        '-',
-        label='routing bias',
-        color='blue'#fc=(0, 0, 1, 0.25)
-    )
-    # Smooth line:
-    plt.plot(
-        moving_average(np.array(deviations), 32),
-        '--',
-        label='32 epoch moving average',
-        color='green'
-    )
-    plt.plot(
-        moving_average(np.array(deviations), 64),
-        '-.',
-        label='64 epoch moving average',
-        color='red'
-    )
-    plt.xlabel("epoch")
-    plt.ylabel("standard deviation")
-    # Title:
-    plt.title('Routing Bias')
-    plt.legend()
-    plt.savefig(plot_path+'routing-bias.png')
-    plt.savefig(plot_path+'routing-bias.pdf')
-    plt.show()
-
-    # Cumulative saturation:
-    #----------------------
-
-    plt.plot(
-        avg_saturation(choice_matrices=choice_matrices, sizes=model.heights),
-        '-',
-        label='cumulative network utilisation',
-        color='green'
-    )
-    plt.plot(
-        initial_network_utilisation,
-        '-.',
-        label='initial cumulative network utilisation',
-        color='blue'
-    )
-    plt.xlabel("token index")
-    plt.ylabel("cumulative network utilisation")
-    # Title:
-    plt.title('Average Cumulative Network Utilization')
-    plt.legend()
-    plt.savefig(plot_path+'cumulative-network-utilisation.png')
-    plt.savefig(plot_path+'cumulative-network-utilisation.pdf')
-    plt.show()
+    load_and_plot(data_path=data_path, plot_path=plot_path)
 
     return choice_matrices
 
@@ -218,15 +155,6 @@ def validate(model, encoder, validation_data):
     return sum_loss / len(validation_data)
 
 
-def moving_average(x, w):
-    filter = np.ones(w) / w
-    return np.convolve(
-                x,
-                filter,
-                'valid' # Maybe use full?
-            )
-
-
 def number_of_changes(choice_matrices: dict, previous_matrices: dict):
     changes = 0
     for s in choice_matrices.keys():
@@ -234,32 +162,6 @@ def number_of_changes(choice_matrices: dict, previous_matrices: dict):
             if choice_matrices[s] != previous_matrices[s]:
                 changes = changes + 1
     return changes
-
-
-def avg_saturation(choice_matrices: dict, sizes: list):
-    structure = [ [c != 1] * c for c in sizes ]
-    conditional = [item for sublist in structure for item in sublist].count(True)
-    choice_matrices = choice_matrices.values()
-    token_index_counts = dict()
-    for sentence in choice_matrices:
-        structure = [ [c != 1] * c for c in sizes ]
-        for i, token in enumerate(sentence):
-            if i not in token_index_counts:
-                token_index_counts[i] = []
-
-            for capsule_index, choice in enumerate(token):
-                structure[capsule_index][choice] = False
-
-            saturation = [item for sublist in structure for item in sublist].count(True)
-            token_index_counts[i].append(1-(saturation / conditional))
-
-
-    for i, v in token_index_counts.items():
-        token_index_counts[i] = (sum(v) / len(v))
-
-    return token_index_counts.values()
-
-
 
 
 

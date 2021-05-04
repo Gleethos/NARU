@@ -27,8 +27,8 @@ def swish(x, derive=False):
 
 
 def activation(x, derive=False):  # State of the Art activation function, SWISH
-    return torch.relu(x)
-    #return swish(x, derive=derive)
+    #return torch.relu(x)
+    return swish(x, derive=derive)
 
 
 def mish(x, derive=False):
