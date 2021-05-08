@@ -131,8 +131,8 @@ def load_and_plot(data_path, plot_path):
         ax1.set_ylabel("loss")
         ax2.set_xlabel("epoch")
         ax2.set_ylabel("loss")
-        plt.savefig(plot_path + 'loss.png', dpi=200)
-        plt.savefig(plot_path + 'loss.pdf')
+        plt.savefig(plot_path + 'validation-and-training-loss.png', dpi=200)
+        plt.savefig(plot_path + 'validation-and-training-loss.pdf')
         plt.show()
 
         # Route changes:
@@ -209,7 +209,7 @@ def load_and_plot(data_path, plot_path):
         plt.xlabel("token index")
         plt.ylabel("cumulative network utilisation")
         # Title:
-        plt.title('Average Cumulative Network Utilization')
+        plt.title('Average Cumulative Network Utilisation')
         plt.legend()
         plt.savefig(plot_path + 'cumulative-network-utilisation.png', dpi=200)
         plt.savefig(plot_path + 'cumulative-network-utilisation.pdf')
