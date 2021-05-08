@@ -1,7 +1,13 @@
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import json
 import numpy as np
+
+
+def avg_sequence_length(data):
+    data = [len(s) for s in data]
+    return sum(data) / len(data)
 
 
 def epoch_deviations(all_matrices: list, sizes: list):
@@ -99,7 +105,7 @@ def avg_saturation(choice_matrices: dict, sizes: list):
 
 
 def load_and_plot(data_path, plot_path):
-
+    sns.set_theme()
     with open(data_path+'/data.json') as json_file:
         data = json.load(json_file)
         json_file.close()
@@ -121,7 +127,11 @@ def load_and_plot(data_path, plot_path):
         ax2.plot(epoch_losses, 'tab:blue')
         ax1.set_title('Validation Losses')
         ax2.set_title('Training Losses')
-        plt.savefig(plot_path + 'loss.png')
+        ax1.set_xlabel("epoch")
+        ax1.set_ylabel("loss")
+        ax2.set_xlabel("epoch")
+        ax2.set_ylabel("loss")
+        plt.savefig(plot_path + 'loss.png', dpi=200)
         plt.savefig(plot_path + 'loss.pdf')
         plt.show()
 
@@ -146,7 +156,7 @@ def load_and_plot(data_path, plot_path):
         # Title:
         plt.title('Route Changes')
         plt.legend()
-        plt.savefig(plot_path + 'route-changes.png')
+        plt.savefig(plot_path + 'route-changes.png', dpi=200)
         plt.savefig(plot_path + 'route-changes.pdf')
         plt.show()
 
@@ -177,7 +187,7 @@ def load_and_plot(data_path, plot_path):
         # Title:
         plt.title('Routing Bias')
         plt.legend()
-        plt.savefig(plot_path + 'routing-bias.png')
+        plt.savefig(plot_path + 'routing-bias.png', dpi=200)
         plt.savefig(plot_path + 'routing-bias.pdf')
         plt.show()
 
@@ -201,6 +211,6 @@ def load_and_plot(data_path, plot_path):
         # Title:
         plt.title('Average Cumulative Network Utilization')
         plt.legend()
-        plt.savefig(plot_path + 'cumulative-network-utilisation.png')
+        plt.savefig(plot_path + 'cumulative-network-utilisation.png', dpi=200)
         plt.savefig(plot_path + 'cumulative-network-utilisation.pdf')
         plt.show()

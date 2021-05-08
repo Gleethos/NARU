@@ -51,7 +51,7 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
             training_data=jokes[100:],
             test_data=jokes[0:100],
             epochs=200,
-            batch_size=10,
+            batch_size=32,
             path=target_folder
         )
         print('Latest choice matrices:', choice_matrices)
@@ -77,7 +77,7 @@ class TestEncoder:
 
     def __init__(self):
         self.word_to_vec = {
-            'a':torch.tensor([[-4.0, 2.0, 3.0]], dtype=torch.float32),
+            'a': torch.tensor([[-4.0, 2.0, 3.0]], dtype=torch.float32),
             'b': torch.tensor([[-1.0, -6.0, 4.0]], dtype=torch.float32),
             'c': torch.tensor([[2.0, 6.0, -4.0]], dtype=torch.float32),
         }
@@ -145,5 +145,5 @@ def test_with_autograd_on_dummy_data():
 
 
 
-#test_with_autograd_on_jokes()
-test_with_autograd_on_dummy_data()
+test_with_autograd_on_jokes()
+#test_with_autograd_on_dummy_data()
