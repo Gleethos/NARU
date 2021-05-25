@@ -72,12 +72,12 @@ def exec_trial_with_autograd(
 
     for epoch in range(epochs):
 
-        instance_losses = []
+        sample_losses = []
         batch = list(training_data)[:batch_size]
         for sentence in batch:
             vectors = encoder.sequence_words_in(sentence)
             choice_matrix, losses = model.train_with_autograd_on(vectors)
-            instance_losses.append(sum(losses) / len(losses))
+            sample_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
 
         training_data.rotate(batch_step) # To enable mini batches!
@@ -85,8 +85,8 @@ def exec_trial_with_autograd(
         optimizer.step()
         optimizer.zero_grad()
 
-        print('Epoch', epoch, ' done! latest loss =', instance_losses[len(instance_losses) - 1],'; Avg loss =', sum(instance_losses)/len(instance_losses), '')
-        epoch_losses.append(sum(instance_losses)/len(instance_losses))
+        print('Epoch', epoch, ' done! latest loss =', sample_losses[len(sample_losses) - 1],'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
+        epoch_losses.append(sum(sample_losses)/len(sample_losses))
 
         # If we have previous choices we count the changes! This gives useful insight into the model!
         if previous_matrices is not None:

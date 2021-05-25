@@ -77,9 +77,10 @@ class TestEncoder:
 
     def __init__(self):
         self.word_to_vec = {
-            'a': torch.tensor([[-4.0, 2.0, 3.0]], dtype=torch.float32),
-            'b': torch.tensor([[-1.0, -6.0, 4.0]], dtype=torch.float32),
-            'c': torch.tensor([[2.0, 6.0, -4.0]], dtype=torch.float32),
+            'a': torch.tensor([[ 1,  1]], dtype=torch.float32),
+            'c': torch.tensor([[-1, -1]], dtype=torch.float32),
+            'g': torch.tensor([[-1,  1]], dtype=torch.float32),
+            't': torch.tensor([[ 1, -1]], dtype=torch.float32),
         }
         self.vec_i_to_word = dict()
         vectors, i = [], 0
@@ -107,41 +108,44 @@ def test_with_autograd_on_dummy_data():
         max_height=3,
         max_dim=4,
         max_cone=3,
-        D_in=3,
-        D_out=3,
+        D_in=2,
+        D_out=2,
         with_bias=False
     )
     for W in model.get_params(): W.requires_grad = True
-    data = ['c c a b c a'.split(), 'a b c b a c'.split(), 'c a c c a b'.split(), 'b a c a b c'.split()]
-    optimizer = torch.optim.Adam(model.get_params(), lr=0.1)
+    data = [
+        't c a g c a g'.split(),
+        'a g c g a t c'.split(),
+        'c a c t a c a'.split(),
+        'g t c a g c t'.split()
+    ]
+    optimizer = torch.optim.Adam(model.get_params(), lr=0.03)
     encoder = TestEncoder()
     for i in range(1):
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=data[:4],
-            test_data=data[:4],
-            epochs=35
+            training_data=data[:],
+            test_data=data[:],
+            epochs=300
         )
         print(choice_matrices)
 
     # a : [-4,  2,  3]
     # b : [-1, -6,  4]
     # c : [ 2,  6, -4]
-    pred = model.pred(encoder.sequence_words_in('a b c b a c'.split()))
+    pred = model.pred(encoder.sequence_words_in(data[0]))
     print('\n'.join([str(p.tolist()) for p in pred]))
     print('\n')
-    pred = model.pred(encoder.sequence_words_in('c c a b c a'.split()))
+    pred = model.pred(encoder.sequence_words_in(data[1]))
     print('\n'.join([str(p.tolist()) for p in pred]))
     print('FFNN-NARU TEST DONE!')
 
-    test_sentence = encoder.sequence_words_in('a b c b a c'.split())
-    preds = model.pred(test_sentence)
-    print(' '.join(encoder.sequence_vecs_in(preds)))
-    test_sentence = encoder.sequence_words_in('c c a b c a'.split())
-    preds = model.pred(test_sentence)
-    print(' '.join(encoder.sequence_vecs_in(preds)))
+    for s in data:
+        test_sentence = encoder.sequence_words_in(s)
+        preds = model.pred(test_sentence)
+        print(' '.join(s),':',' '.join(encoder.sequence_vecs_in(preds)))
 
 
 

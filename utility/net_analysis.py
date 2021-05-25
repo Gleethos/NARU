@@ -104,11 +104,12 @@ def avg_saturation(choice_matrices: dict, sizes: list):
     return token_index_counts.values()
 
 
-def load_and_plot(data_path, plot_path):
+def load_and_plot(data_path, plot_path, preprocessor=lambda data : data):
     sns.set_theme()
     with open(data_path+'/data.json') as json_file:
         data = json.load(json_file)
         json_file.close()
+        data = preprocessor(data)
         validation_losses = data['loss']['validation']
         epoch_losses = data['loss']['training']
         choice_changes = data['route-changes']
@@ -142,7 +143,8 @@ def load_and_plot(data_path, plot_path):
             choice_changes,
             width=1.0,
             label='number of route changes per epoch',
-            fc=(0, 0, 1, 0.25)
+            fc=(0, 0.25, 0.5, 0.5),
+            linewidth=0.0
         )
         # Smooth lines:
         plt.plot(

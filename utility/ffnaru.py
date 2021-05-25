@@ -10,7 +10,7 @@ def dampener_of(current_index: int, num_of_el: int):
     current_index, num_of_el = min(current_index, 13), min(num_of_el, 13)
     progress = current_index / num_of_el
     dampener = 1 + 999 * (1 - progress) ** 4
-    return dampener
+    return 1#dampener
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -159,10 +159,9 @@ class Network:
                 assert vector_index > 0
                 expected = vectors[vector_index]
 
-                dampener = dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
                 predicted = out_bundle.latest(time).state
                 loss = torch.sum( (predicted - expected)**2 ) / torch.numel(predicted)
-                loss = loss / dampener
+                loss = loss / dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
                 losses.append(loss)
             else:
                 assert out_bundle.at(time).is_sleeping

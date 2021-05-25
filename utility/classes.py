@@ -28,7 +28,8 @@ def swish(x, derive=False):
 
 def activation(x, derive=False):  # State of the Art activation function, SWISH
     #return torch.relu(x)
-    return swish(x, derive=derive)
+    return mish(x, derive=derive)
+    #return swish(x, derive=derive)
 
 
 def mish(x, derive=False):
@@ -319,7 +320,7 @@ class Bundle(Recorder):
                 current_moment.derivative = 1 / number_of_connections # The derivative is simple because no function...
             else:
                 current_moment.state = activation(x=z)  # If this is not the start of the network... : Activate!
-                current_moment.derivative = activation(x=z, derive=True) / number_of_connections
+                #current_moment.derivative = activation(x=z, derive=True) / number_of_connections
 
             #print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
 
