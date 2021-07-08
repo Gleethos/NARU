@@ -1,0 +1,47 @@
+% !TEX encoding = IsoLatin2
+% Optionen für [Dokumentart, Studiengang, Sprache] sind im Dokument twbook.cls zu Beginn zu finden
+\documentclass[Bachelor, BIF, english]{../twbook}
+
+% Hier kann je nach Betriebssystem eine der folgenden Optionen notwendig sein, um die Umlaute korrekt wiederzugeben (ansinew, utf8, latin, applemac):
+\usepackage[utf8]{inputenc}
+
+% Packages
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{dtk-logos}
+\graphicspath{{img/}}
+\usepackage[xindy,toc,acronyms]{glossaries}
+\makeglossaries
+\usepackage[backend=bibtex,style=ieee,sorting=nyt, language=english]{biblatex}
+%\usepackage{natbib}
+\bibliography{Literature}
+
+% Cover
+\title{
+On the State of ANN Computation Graphs and the potential of
+
+Conditional Neural Networks
+}
+\author{Daniel Nepp}
+\studentnumber{51832066}
+\supervisor{Markus Petz, MSc}
+\place{Vienna}
+
+\include{Preamble}
+
+\include{Glossaries}
+
+\begin{document}
+
+% Based on \documentclass generates automatically: 
+  % Eidesstattliche Erklärung
+  % Kurzfassung
+  % Abstract
+  % Danksagung
+  % Inhaltsverzeichnis
+\maketitle
+
+\include{Main}
+
+\include{Directories}
+
+\end{document}

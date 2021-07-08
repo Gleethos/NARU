@@ -1,0 +1,1423 @@
+% \iffalse meta-comment
+% -------------------------------------------------------
+%
+% Copyright (C) 2014 Richard Otrebski 
+% <otrebski@technikum-wien.at>
+% Copyright (C) 2013 Dr. Andreas Drauschke 
+% <andreas.drauschke@technikum-wien.at>
+%
+% -------------------------------------------------------
+%
+%<*driver>
+\input{vc.tex}
+\ProvidesFile{twbook.dtx}
+\RequirePackage{svn-multi}
+\svnidlong
+{$HeadURL: https://svnmr.technikum-wien.at/svn/MR_LaTeX/trunk/TWBOOK/twbook.dtx $}
+{$LastChangedDate: 2019-02-12 16:54:58 +0100 (Tue, 12 Feb 2019) $}
+{$LastChangedRevision: 149 $}
+{$LastChangedBy: otrebski $}
+\svnid{$Id: twbook.dtx 149 2019-02-12 15:54:58Z otrebski $}
+%</driver>
+%<class>\NeedsTeXFormat{LaTeX2e}
+%<class>\ProvidesClass{twbook}[2013/03/25 v0.03 Standard LaTeX Dokumenten-Klasse fuer Dokumente der FH Technikum Wien]
+% \fi
+%
+% \CheckSum{0}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+% \changes{v0.9}{05/11/2014}{Einbau der SVN-Versionsnummer}
+% \changes{v0.8}{30/10/2014}{Verwendung der Standard-TeX-Escape-Sequenzen für Umlaute}
+% \changes{v0.7}{21/10/2014}{Nachbesserung der ersten Bugs, Erweiterung auf XeTeX und LuaTeX}
+% \changes{v0.6}{10/10/2014}{Verbesserung der ersten berichteten Bugs}
+% \changes{v0.5}{11/09/2014}{Anpassung der Cover an die Vorgaben der UK}
+% \changes{v0.4}{08/11/2013}{Doppelte Inhaltsverzeichnisse in Master englisch behoben, Seitennummeriungsfehler in Studiengangsdokumenten behoben.}
+% \changes{v0.3}{2013/03/24}{Dokumentation implementiert}
+% \changes{v0.2}{2013/03/20}{Grundlayouts fertig - nicht betagetestet}
+% \changes{v0.1}{2013/03/10}{Erste lauffähige Version}
+% \GetFileInfo{twbook.dtx}
+%
+% \DoNotIndex{\arabic, \baselineskip, \baselinestretch, \newcommand,\newenvironment, \centerdot, \chapter, \chapterpagestyle, \clearpage, \clearscrheadings, \color, \ifpdf, \definecolor, \extrarowheigh, \footnotesize, \glqq, \grqq, \headheight, \huge, \hypersetup, \ifstr, \labelitemi, \labelitemii, \labelitemiii, \LARGE, \Large, \linewidth, \LoadClass, \mdseries, \normalsize, \pagemark, \paperheight, \paperwidth, \risebox, \RequirePackage, \rofoot, \scalebox, \selectsprache, \setkomafont, \sffamily, \small,\tableofcontents, \textbf, \textheight, \textwidth, \theequation, \thefigure, \thetable, \ThisTileWallPaper, \today, \tolerance, \urlstyle, \raisebox, \extrarowheight, \Huge, \evensidemargin, \oddsidemargin, \maketitle, \selectlanguage, \@chapter, \@afterindentfalse, \@schapter, \@topnum}
+%
+% \title{Erläuterungen zur Dokumentenklasse TWbook}
+% \author{Richard Otrebski\\ 
+% \href{mailto:otrebski@technikum-wien.at}%
+% {otrebski@technikum-wien.at}\\ 
+% SVN-Version: \SVNRevision (\svnrev)}
+% \date{\today}
+% 
+% \maketitle
+%
+% \begin{abstract}
+% Die Dokumentenklasse TWbook wurde geschaffen, um ein einheitliches Corporate Idendity für LaTeX Nutzer zur Verfügung zu stellen. Die Klasse basiert auf der KOMA--Klasse srcbook von Markus Kohm. Darüber hinaus werden zusätzliche optionale Argumente zur Steuerung des Layouts und einige neue Befehle zur korrekten Befüllung insbesondere der Deckblattes bereitgestellt. Bis Version 0.4 wurde die Klasse von Herrn Dr. Andreas Drauschke entwickelt und verwalten.
+% \end{abstract}
+%
+% \tableofcontents
+%
+% \section{Einleitung}
+% Die FH Technikum Wien stellt Studierenden und Angestellten vordefinierte Designs zur Verfügung. Zur Erhöhung des Wiedererkennungswertes wurde ein qualitätsgesichertes Corporate Identity Design für eine Vielzahl unterschiedlicher Dokumente entwickelt. Insbesondere wurden folgende unterschiedliche Typen von Dokumenten entwickelt:%\clearpage
+% \begin{itemize}
+% \item mehrseitige buchartige Publikationen für
+% 	\begin{itemize}
+% 		\item Masterarbeiten
+% 		\item Bachelorarbeiten
+% 		\item Seminararbeiten
+% 		\item Praktikumsberichte
+% 		\item Laborprotokolle
+% 		\item Projektarbeiten
+% 		\item extern zu verwendende Dokumente im Corporate Identity Design der FH Technikum Wien
+% 		\item extern und intern zu verwendende Dokumente im Corporate Identity Design der einzelnen Studiengänge 
+% 	\end{itemize}
+% 	\item Briefe
+% 	\begin{itemize}
+% 		\item ein- und mehrseitig 
+% 		\item mit und ohne Logo der FH Technikum Wien
+% 		\item zur elektronischen Versendung (Fax)
+% 		\item Kurzbriefe
+% 	\end{itemize} 
+% 	\item Beamer--Präsentationen
+% 	\begin{itemize}
+% 		\item extern zu verwendende Dokumente im Corporate Identity Design der FH Technikum Wien
+% 		\item extern und intern zu verwendende Dokumente im Corporate Identity Design der einzelnen Studiengänge 
+% 		\item extern und intern zu verwendende Dokumente im Corporate Identity Design einzelner Unterorganisationen der FH Technikum Wien (Bibliothek, FH Technikum Wien International, LLL)
+% 	\end{itemize} 
+% 	\item Poster--Präsentationen
+% 	\begin{itemize}
+% 		\item extern zu verwendende Dokumente im Corporate Identity Design der FH Technikum Wien
+% 		\item extern und intern zu verwendende Dokumente im Corporate Identity Design der einzelnen Studiengänge 
+% 		\item extern und intern zu verwendende Dokumente im Corporate Identity Design einzelner Unterorganisationen der FH Technikum Wien (Bibliothek, FH Technikum Wien International, LLL)
+% 	\end{itemize} 
+% \end{itemize}
+% 
+% Die vorliegende Arbeit wurde als buchartige Publikation für extern zu verwendende Dokumente im Corporate Identity Design der FH Technikum Wien verfasst. Dokumentation und Dokumentenklasse wurden mithilfe der Utilities doc und docstrip automatisch aus dem Quellfile twbook.dtx generiert. Ebenso wurde mit Version 0.9 das Paket svn-multi verwendet, um die aktuelle SVN-Revisionsnummer im Dokument anzeigen zu können. Dies ermöglicht eine einfache Identifikation von neueren Versionen.
+%
+% \iffalse
+%<*driver>
+\documentclass[a4paper,12pt]{ltxdoc}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{doc}
+\usepackage{color}
+\usepackage{ltxdocext}
+\usepackage[german,ngerman]{babel}
+\usepackage{listings,fancyvrb}
+\usepackage{makeidx,showidx,multicol}
+\usepackage[bookmarks=true,citebordercolor={1 1 1},filecolor=black,linkbordercolor={1 1 1},linkcolor={0 0 1},pdfauthor={Richard Otrebski},pdfmenubar=false,urlbordercolor={1 1 1},pdftex]{hyperref}
+\usepackage{blindtext}
+\usepackage{scrtime}
+\addtolength{\textheight}{9\baselineskip}
+\addtolength{\textwidth}{40pt}
+\addtolength{\topmargin}{-80pt}
+\setlength{\parindent}{0pt}
+\definecolor{TWgreen}{RGB}{8,140,82}
+\definecolor{TWblue}{RGB}{16,132,214}
+\EnableCrossrefs         
+\CodelineIndex
+\RecordChanges
+\begin{document}
+  \DocInput{twbook.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \section{Zwei Beispiele}
+% An den Anfang der Dokumentation sollen zwei Beispielanwendungen der Dokumentenklasse twbook gestellt werden. Im ersten Beispiel wird demonstriert, wie eine englische Masterarbeit im Studiengang MBE beispielhaft gesetzt werden kann. Im zweiten Beispiel wird ein deutsches Dokument des Studiengangs {\em Game Engineering und Simulation} generiert. Die zugrunde liegenden Quellfiles und die erzeugten pdf--Dateien sind der Dokumentation beigelegt ({\em Masterarbeit.tex, Masterarbeit.pdf, MGS.tex} und {\em MGS.pdf}
+% \subsection{Beispiel für eine Masterarbeit}
+% \ttfamily\scriptsize
+% \lstset{language=TeX}
+%
+% \lstinputlisting[breaklines=true, emph={\documentclass, \usepackage, \title, \author, \studentnumber, \supervisor, \place, \kurzfassung,\blindtext,\schlagworte,\outline,\keywords,\acknowledgements,\begin, \end, \maketitle, \chapter, \section, \subsection, \subsubsection, \noindent, \centering, \includegraphics, \linewidth, \label, \ref, \hline, \glqq, \grqq, \frac, \pm, \sqrt, \frac, \clearpage, \bibliographystyle, \bibitem, \newblock, \em, \textsc, \listoffigures, \listoftables, \acro, \item}, emphstyle=\color{blue}, numbers=left, stepnumber=10, numbersep=15pt, frame = single, framexleftmargin=25pt, framextopmargin=5pt, framexbottommargin=5pt]{Doku/Masterarbeit.tex}\clearpage
+
+% \subsection{Beispiel für Dokument des Studiengangs MGS}
+% 
+% \lstinputlisting[breaklines=true, emph={\documentclass,\usepackage,\title,\author,\studentnumber,\supervisor,\place,\kurzfassung,\blindtext,\schlagworte,\outline,\keywords,\acknowledgements,\begin, \end, \maketitle, \chapter, \section, \subsection, \subsubsection, \noindent, \centering, \includegraphics, \linewidth, \label, \ref, \hline, \glqq, \grqq, \frac, \pm, \sqrt, \frac, \clearpage, \bibliographystyle, \bibitem, \newblock, \em, \textsc, \listoffigures, \listoftables, \acro, \item}, emphstyle=\color{blue}, numbers=left, stepnumber=10, numbersep=15pt, frame = single, framexleftmargin=25pt, framextopmargin=5pt, framexbottommargin=5pt]{Doku/MGS.tex}
+
+% \rmfamily\normalsize
+% \section{Deklarationen}
+% Die Dokumentenklasse erlaubt die Übergabe verschiedener neuer optionaler Parameter. Gebrauch, Definition und Weiterverarbeitung der Parameter wird im Kapitel \ref{Kap:Optionen} ab Seite \pageref{Kap:Optionen} ausführlich beschrieben. Hier erfolgt die Deklaration der einzelnen Befehle. Standardmäßig werden die deutschen Belegungen und das neutrale TW Design gewählt
+%
+	%    \begin{macrocode}
+	\newcommand{\sprache}{english}
+	\DeclareOption{german}{\renewcommand*{\sprache}{german}}
+	\DeclareOption{ngerman}{\renewcommand*{\sprache}{ngerman}}
+	\DeclareOption{english}{\renewcommand*{\sprache}{english}}
+
+	\newcommand{\institution}{Technikum}
+	\newcommand{\degreecourse}{TW}
+	\DeclareOption{ACADEMY}{\renewcommand*{\degreecourse}{Academy}%
+	\renewcommand*{\institution}{Academy}}
+	\DeclareOption{BBE}{\renewcommand*{\degreecourse}{BBE}}
+	\DeclareOption{BEE}{\renewcommand*{\degreecourse}{BEE}}
+	\DeclareOption{BEL}{\renewcommand*{\degreecourse}{BEL}}
+	\DeclareOption{BEW}{\renewcommand*{\degreecourse}{BEW}}
+	\DeclareOption{BIC}{\renewcommand*{\degreecourse}{BIC}}
+	\DeclareOption{BIF}{\renewcommand*{\degreecourse}{BIF}}
+	\DeclareOption{BIW}{\renewcommand*{\degreecourse}{BIW}}
+	\DeclareOption{BMB}{\renewcommand*{\degreecourse}{BMB}}
+	\DeclareOption{BMR}{\renewcommand*{\degreecourse}{BMR}}
+	\DeclareOption{BSA}{\renewcommand*{\degreecourse}{BSA}}
+	\DeclareOption{BST}{\renewcommand*{\degreecourse}{BST}}
+	\DeclareOption{BVU}{\renewcommand*{\degreecourse}{BVU}}
+	\DeclareOption{BWI}{\renewcommand*{\degreecourse}{BWI}}
+	\DeclareOption{MBE}{\renewcommand*{\degreecourse}{MBE}}
+	\DeclareOption{MEE}{\renewcommand*{\degreecourse}{MEE}}
+	\DeclareOption{MES}{\renewcommand*{\degreecourse}{MES}}
+	\DeclareOption{MGR}{\renewcommand*{\degreecourse}{MGR}}
+	\DeclareOption{MGS}{\renewcommand*{\degreecourse}{MGS}}
+	\DeclareOption{MIC}{\renewcommand*{\degreecourse}{MIC}}
+	\DeclareOption{MIE}{\renewcommand*{\degreecourse}{MIE}}
+	\DeclareOption{MIT}{\renewcommand*{\degreecourse}{MIT}}
+	\DeclareOption{MIW}{\renewcommand*{\degreecourse}{MIW}}
+	\DeclareOption{MMB}{\renewcommand*{\degreecourse}{MMB}}
+	\DeclareOption{MMR}{\renewcommand*{\degreecourse}{MMR}}
+	\DeclareOption{MSC}{\renewcommand*{\degreecourse}{MSC}}
+	\DeclareOption{MSE}{\renewcommand*{\degreecourse}{MSE}}
+	\DeclareOption{MST}{\renewcommand*{\degreecourse}{MST}}
+	\DeclareOption{MTE}{\renewcommand*{\degreecourse}{MTE}}
+	\DeclareOption{MTI}{\renewcommand*{\degreecourse}{MTI}}
+	\DeclareOption{MTM}{\renewcommand*{\degreecourse}{MTM}}
+	\DeclareOption{MTU}{\renewcommand*{\degreecourse}{MTU}}
+	\DeclareOption{MWI}{\renewcommand*{\degreecourse}{MWI}}
+
+	\newcommand{\doctype}{}
+	\newcommand{\doctypeprint}{}
+	\DeclareOption{Bachelor}{\renewcommand*{\doctype}{BACHELORARBEIT}}
+	\DeclareOption{Master}{\renewcommand*{\doctype}{MASTERARBEIT}}
+	\DeclareOption{Seminar}{\renewcommand*{\doctype}{SEMINARARBEIT}}
+	\DeclareOption{Projekt}{\renewcommand*{\doctype}{PROJEKTBERICHT}}
+	\DeclareOption{Praktikum}{\renewcommand*{\doctype}{PRAKTIKUMSBERICHT}}
+	\DeclareOption{Labor}{\renewcommand*{\doctype}{LABORPROTOKOLL}}
+	
+	\newcommand{\cover}{PICs/TW}
+	    
+	%    \end{macrocode}
+%	
+% Als Basis für die Klasse wird die KOMA-Klasse scrbook verwendet. Die Schriftgröße beträgt 11pt. Der Druck erfolgt einseitige auf A4-Papier, wobei die Seitenränder nachträglich automatisch an die FH Vorgaben angepasst werden, Es wird kein Kopf verwendet.
+%
+% Folgende Zusatzpakete werden automatisch mit der twbook-Klasse geladen und müssen daher nicht noch einmal durch den Anwender aufgerufen werden:
+% \begin{description}
+% \item[scrhack:] Erhöht die Kompatibilität einiger Pakete mit der Klasse
+% \item[color, xcolor:] Bereitstellung von Farben für Text und  	strichbasierte Graphiken
+% \item[xifthen:] erlaubt die eingabespezifische Abarbeitung von Eingaben der Anwender
+% \item[ifpdf:] Erlaubt die Abfrage, ob das Dokument mit pdflatex oder latex kompiliert wird. Damit können einige Einstellungen bei bestimmten Paketen adaptiert werden
+% \item[wallpaper:] Erlaubt das einfache Einbinden von Hintergrundbildern
+% \item[palatino:] Definiert neue Standardschriften, für roman: palatino, für sserif: helvet, für ttypter: courier
+% \item[scrpage2:] erlaubt die individuelle Anpassung des Seitenlayouts
+% \item[acronym:] erlaubt die automatisierte Erstellung und Verwaltung  eine Abkürzungsverzeichnisses. Achtung: das Paket weist  Inkompatibilitäten zum glossary-Packet auf!
+% \item[amsmath, amssymb, amsfonts, amstext:] Laden der mathematischen Fonts und Symbole
+% \item[babel:] erweiterte Sprachanpassung zur Optimierung von Silbentrennungen, Anführungszeichen, ect.
+% \item[array:] Erweiterte Möglichkeiten der Anpassung in Tabellen
+% \item[hyperref:] wird automatisch abhängig von der Kompilierung mit pdflatex oder latex-dvips gewählt. Erlaubt die leichte Erstellung und Verwaltung von Hyperlinks im Dokument
+% \item[graphicx:] wird automatisch abhängig von der Kompilierung mit pdflatex oder latex-dvips gewählt. Erlaubt die Einbindung und Anpassung von extern vorliegenden Graphiken
+% \item[iftex:] Zur Unterscheidung der verwendeten TeX-Engine.
+% \item[ifdraft:] Zur Unterscheidung ob ein Entwurf erstellt wird.
+% \item[tikz-external:] Zur Unterscheidung ob es sich bei dem aktuelle \LaTeX-lauf um das Hauptdokument handelt.
+% \item[caption:] Dieses Paket wird benötigt um die Unterschriften bei Abbildungen, Tabellen und sonstigen Objekten anzupassen.
+% \item[\bf Achtung!] Sollten weitere Pakete geladen werden, so ist eventuell eine nachträgliche Anpassung des Hypersetups durch den Anwender notwendig!
+% \item[\bf Achtung!] Definieren sie keine Makros mit einem einzigen Buchstaben als Namen! Selbst erstellte Makros sollten mindestens drei Zeichen als Namen haben!
+% \end{description}
+% Das Laden der grundlegenden Dokumentenklasse und der benötigten Zusatzpakete erfolgt nach der Initialisierung der Klasse über 
+%
+%    \begin{macrocode}
+\ProcessOptions\relax
+
+\LoadClass[a4paper,fontsize=11pt,twoside=false,%
+	headings=normal,toc=listof,listof=entryprefix,%
+	listof=nochaptergap,bibliography=totoc,%
+	numbers=noendperiod]{scrbook}
+\RequirePackage{scrhack}
+\RequirePackage{color,xcolor}
+\RequirePackage{xifthen}
+\RequirePackage{ifpdf}
+\RequirePackage{ifdraft}
+\RequirePackage{wallpaper}
+\RequirePackage{palatino}
+\RequirePackage{scrpage2}
+\RequirePackage{acronym}
+\RequirePackage{amsmath,amssymb,amsfonts,amstext}
+\RequirePackage[\sprache]{babel}
+\ifstr{\sprache}{ngerman}
+{%
+	 %ngerman
+	 %change \sprache to german to translate everything else; babel's already loaded
+	 \renewcommand*{\sprache}{german}
+}%
+{%
+	 %german & english
+	 %Do nothing; everything's fine
+}%
+\RequirePackage{array}
+\RequirePackage{tikz}
+\usetikzlibrary{external}
+\RequirePackage{caption}
+\DeclareCaptionLabelSeparator{periodcolon}{.: }
+\captionsetup{labelsep=colon}
+\renewcommand*{\figureformat}{\figurename~\thefigure}
+\renewcommand*{\tableformat}{\tablename~\thetable}
+%    \end{macrocode}
+% 
+% Zusätzlich wird unterschieden welche \TeX{}-Engine verwendet wird. Hier können weitere spezifische Pakete eingebunden und Anpassung vorgenommen werden.
+%    \begin{macrocode}
+\RequirePackage{iftex}
+% Choose package options according to the TeX-engine
+\ifPDFTeX
+	 % PDFLaTeX
+	 \ifpdf
+	 	 \RequirePackage[pdftex]{hyperref}
+	 	 \RequirePackage{graphicx}
+	 \else
+	 	 \RequirePackage[dvips]{hyperref}
+	 	 \RequirePackage[dvips]{graphicx}
+	 \fi
+\else
+	 \ifXeTeX
+	 	 % XeTeX
+	 	 \RequirePackage{hyperref}
+	 	 \RequirePackage{graphicx}
+	 \else
+	 	 \ifLuaTeX
+	 	 	 % LuaTeX
+	 	 	 \RequirePackage{hyperref}
+	 	 	 \RequirePackage{graphicx}
+	 	 \else
+	 	 	 % Some obscure Engine!
+	 	 	 \ClassError{twbook}{%
+	 	 	  The TeX-Engine you are using is not supported!\MessageBreak%
+	 	 	  Try a different Engine!\Messagebreak%
+	 	 	  Maybe PDFTeX, XeTeX or LuaTeX!
+	 	 	 }{%
+	 	 	  Something is wrong with the Tex-Engine you are using.\MessageBreak%
+	 	 	  We don't support that one!}
+	 	 \fi
+	\fi
+\fi
+
+%    \end{macrocode}
+%
+% Folgender Quellcode erzeugt eine Datei mit der Endung .refs. In dieser sind die verschiedenen Referenzen nach folgendem Muster aufgeschlüsselt: Name des Labels, Seitennummer der Referenz, Seitennummer des Labels, ... Dadurch ist es möglich Referenzen auf ihr Vorhandensein zu überprüfen. Da dieser Quellcode jedoch die Verlinkung von Referenzen unterdrückt wird dieser Abschnitt auskommentiert.
+%    \begin{macrocode}
+%\newwrite\refs%
+%\openout\refs=\jobname.refs%
+%\renewcommand\@setref[3]{%
+%   \ifx#1\relax
+%      \write\refs{'#3' \thepage\space undefined}%
+%      \protect \G@refundefinedtrue
+%      \nfss@text{\reset@font\bfseries ??}%
+%      \@latex@warning{Reference `#3' on page \thepage\space
+%         undefined}%
+%   \else
+%      \write\refs{'#3' \thepage\space
+%         \expandafter\@secondoftwo#1}%
+%      \expandafter#2#1\null
+%   \fi
+%}
+%    \end{macrocode}
+%
+% Eine Fehlermeldung von Babel muss neu definiert werden, um Konfusion bei den Anwendern zu vermeiden. Um Fehlermeldungen in der \TeX{}Live Distribution zu vermeiden, muss der Befehl auch noch definiert werden. 
+%    \begin{macrocode}
+	\providecommand*{\@noopterr}[1]{}
+	\renewcommand*{\@noopterr}[1]{%
+  	\PackageWarning{babel}%
+  	{You haven't loaded the option #1\space yet.\MessageBreak%
+  		Rerun to set the right option.\MessageBreak%
+  		Sie haben die Option #1\space aktuell nicht geladen.\MessageBreak%
+  		Kompilieren Sie noch einmal um die korrekte Option zu setzen}}
+
+%    \end{macrocode}
+% 
+% Es ist zu beachten, dass jeweils nur die angegebene Sprache (default-mäßig english) unterstützt wird!
+%
+% \section{Das Grundlayout}\label{kap:layout}
+% 
+% Zur weiteren Verwendung im Dokument werden die beiden Grundfarben der FH Technikum Wien definiert. Diese Farben stehen jedem Anwender in den Dokumenten zur Verfügung
+%
+%    \begin{macrocode}
+\definecolor{TWgreen}{RGB}{140,177,16}
+\definecolor{TWblue}{RGB}{0,101,156}
+\definecolor{TWgray}{RGB}{113,120,125}
+
+%    \end{macrocode}
+% 
+% Die Definition der Farben für die internen Links (schwarz), die zitierten Quellen (schwarz), referenzierte Files (schwarz) und urls (TW--blau) sowie deren Umrandungen werden nachfolgend für das finalen pdf-Dokument festgelegt. Hierzu werden die entsprechenden Werte mit hypersetup gesetzt. Abschließend wird der Font für die links auf serifenlose Schriften gesetzt.
+%
+%    \begin{macrocode}
+\hypersetup{colorlinks=true, linkcolor=black, linkbordercolor=white,%
+						citecolor=black, citebordercolor=white,%
+						filecolor=black, filebordercolor=white,%
+						urlcolor=TWblue, urlbordercolor=white}
+\urlstyle{sf}
+
+%    \end{macrocode}
+%
+% Das Seitenlayout wird dahingehend angepasst, dass die Kopfzeile im Dokument komplett entfernt wird und rechts in die Fußzeile die aktuelle Seitenzahl ausgegeben wird. Ebenso wird die Schriftart der Seitenzahl von einem Seriefenfont auf einen Serifenlosen Font umgestellt. Dies wird mit 
+%
+%    \begin{macrocode}
+\addtocounter{tocdepth}{0}
+\addtokomafont{pagenumber}{\sffamily}
+\pagestyle{scrheadings}
+\clearscrheadings
+\ihead[]{}
+\chead[]{}
+\ohead[]{}
+\ifoot[]{}
+\cfoot[]{}
+\ofoot[\footnotesize\pagemark]{\footnotesize\pagemark}
+\renewcommand*{\chapterpagestyle}{plain}
+
+%    \end{macrocode}
+%
+% erreicht. 
+%
+% Die Zähler sollen nach Beginn neuer Kapitel nicht wieder mit 1 beginnen, daher
+%    \begin{macrocode}
+\RequirePackage{remreset}
+ \@removefromreset{figure}{chapter}
+ \@removefromreset{table}{chapter}
+ \@removefromreset{equation}{chapter}
+
+%    \end{macrocode}
+%
+% Gleichungen werden arabisch nummeriert. Die in der book--Klasse übliche chapterweise Nummerierung der Gleichungen wird ausgeschlaten. Schriftart und Größe der Nummerierungen und Labels von Abbildungen und Tabellen werden angepasst. Durch die Verwendung des \texttt{protect}-Befehls kann auch der Entwurfsmodus der Klasse ohne Probleme verwendet werden. Da die Nummerierung einen Schriftgrad kleiner gesetzt wird, als der Fließtext, muss diese Änderung nach dem Setzen der Zahl rückgängig gemacht werden. Diese Anpassungen werden im Dokument mittels
+%
+%    \begin{macrocode}
+\renewcommand*{\theequation}{\protect\small\arabic{equation}\protect\normalsize}
+\renewcommand*{\thefigure}{\protect\small\arabic{figure}\protect\normalsize}
+\renewcommand*{\thetable}{\protect\small\arabic{table}\protect\normalsize}
+\setkomafont{caption}{\protect\small}
+\setkomafont{captionlabel}{\protect\small}
+
+%    \end{macrocode}
+% erreicht.
+%
+% In den Tabellen wird ein zusätzlicher Abstand zum oberen Zeilenrand eingeführt. Der hierzu benötigte Befehl {\tt \textbackslash extrarowheight} wird im Paket {\tt array} definiert:
+%
+%    \begin{macrocode}
+\renewcommand*{\extrarowheight}{3pt}
+%    \end{macrocode}
+%
+% Abschließend werden die Texthöhe, die Textbreite, die Höhe des Zeilenkopfes (zur Vermeidung von Warnmeldungen) und der Zeilenabstand (der angegebene Wert von 1.2 erzeugt einen 1.5--fachen Zeilenabstand) definiert. Um Warnungen von overfull und underfull-Boxen zu reduzieren wird mit {\tt \textbackslash sloppy\textbackslash tolerance=10000} ein freizügigerer Dehnparameter zugelassen: 
+%
+%    \begin{macrocode}
+\addtolength{\textheight}{5\baselineskip}
+\addtolength{\textwidth}{38pt}
+\setlength{\headheight}{1.3\baselineskip}
+\renewcommand*{\baselinestretch}{1.21% \changes{v0.3}{2013/03/24}{Dokumentation implementiert}
+}
+\sloppy\tolerance=10000
+
+%    \end{macrocode}
+%
+% Das Seitenlayout unterscheidet sich leicht bei den einzelnen Vorlagen. Die Einstellungen der Seitenränder und Formatierungen der Überschriften erfolgt mittels 
+%
+%    \begin{macrocode}
+\ifstr{\doctype}{}
+{
+  \addtolength{\oddsidemargin}{-33pt}
+  \addtolength{\evensidemargin}{-33pt}
+  \setkomafont{chapter}{\color{TWblue}\mdseries\Huge}
+  \setkomafont{section}{\color{TWblue}\mdseries\huge}
+  \setkomafont{subsection}{\color{TWblue}\mdseries\Large}
+  \setkomafont{subsubsection}{\bfseries\normalsize}}
+{
+  \addtolength{\oddsidemargin}{-19pt}
+  \addtolength{\evensidemargin}{-19pt}
+  \setkomafont{chapter}{\mdseries\huge}
+  \setkomafont{section}{\mdseries\LARGE}
+  \setkomafont{subsection}{\mdseries\Large}
+  \setkomafont{subsubsection}{\bfseries\normalsize}}
+  
+%    \end{macrocode}
+%
+% In der KOMA-Book-Klasse beginnen Kapitel jeweils auf einer neuen Seite. Dies wird in der aktuellen Vorlage ausgeschalten. Die Verantwortung für eventuelle Formatierungen bei neuen Kapiteln obliegt damit den Verfassern der Texte. Das Ausschalten der Seitenumbrüche bei Kapitelanfängen wird mit
+%
+%    \begin{macrocode}
+\renewcommand*\chapter{\par\global\@topnum\z@\@afterindentfalse%
+\secdef\@chapter\@schapter}
+
+%    \end{macrocode}
+%
+% erreicht.
+%
+% \section{Optionen}\label{Kap:Optionen}
+% 
+% Generell gilt, dass bei Übergabe eines ungültigen Parameters, beim Compilieren des Files\vspace{0.5\baselineskip}
+%
+%	\begin{minipage}{\linewidth}
+%	{\tt LaTeX Warning: Unused global option(s): <wrong option>} 
+% \end{minipage}\vspace{0.5\baselineskip}
+%
+% im log--File ausgegeben wird.
+%
+% \begin{macro}{\sprache}
+	% Die Sprache ist das erste optinale Argument, welches Übergeben werden kann. Zur Auswahl stehen deutsch (zu definieren mittels german) und englisch (zu definieren mittels english). Die deutsche Sprache ist per default eingestellt und muss nicht explizit angegeben werden. Bei englischsprachigen Dokumenten muss unbedingt eine Angabe der Sprache erfolgen, da ansonsten nicht die korrekte Version des babel-Paketes geladen wird.
+% \end{macro}
+%
+% \begin{macro}{\degreecourse}
+	% Dieser Befehl dient der Auswahl des gewünschten Studiengangs. Die Defnition des Auswahlbefehls für den Studiengang wird standardmäßig auf TW (Allgemeine Vorlage) gesetzt und bei Übergabe eines Studiengangs Überschrieben.
+	%
+	% Ausgewählt werden können die Studiengänge mittels der dreibuchstabigen\footnote{Die einzige Ausnahme von der dreibuchstabigen Regel bildet die allgemeine Vorlage} Abkürzung des gewünschten Studiengangs Zur Verfügung stehen somit (Achtung - in der nachfolgenden Auflistung stehen noch Kommentare, welche für den Alpha--Test benötigt werden. Diese werden in der finalen Version gelöscht werden.) 
+	%
+	%\begin{itemize}
+	% \item[\tt TW (default):] neutral blaues Deckblatt des Technikum Wien gOK  
+	% \item[\tt BBE:] Bachelor Biomedical Engineering (Biomedizinisches Ingenieurswesen) gOK
+	% \item[\tt BEE:] Bachelor Urbane erneuerbare Energietechniken gOK
+	% \item[\tt BEL:] Bachelor Elektonik gOK
+	% \item[\tt BEW:] Bachelor Elektronik/Wirtschaft gOK
+	% \item[\tt BIC:] Bachelor Informations und Kommunikationssysteme gOK
+	% \item[\tt BIF:] Bachelor Informatik gOK
+	% \item[\tt BIW:] Bachelor Internationales Wirtschaftsingenieurwesen gOK
+	% \item[\tt BMR:] Bachelor Mechatronik/Robotik gOK
+	% \item[\tt BMB:] Bachelor Maschinenbau gOK
+	% \item[\tt BSA:] Bachelor Smart Homes and Assistive Technologies gOK
+	% \item[\tt BST:] Bachelor Sports Equipment technology (Sportger{\"a}tetechnik) gOK
+	% \item[\tt BVU:] Bachelor Verkehr und Umwelt gOK
+	% \item[\tt BWI:] Bachelor Wirtschaftsinformatik
+	% \item[\tt MBE:] Master Biomedical Engineering Sciences gOK eonly
+	% \item[\tt MEE:] Master Erneuerbare Urbane Energiesysteme gOK
+	% \item[\tt MES:] Master Embedded Systems gOK eonly
+	% \item[\tt MGR:] Master Gesundheits- und Rehabilitationstechnik gOK
+	% \item[\tt MGS:] Master Game Engineering und Simulation gOK
+	% \item[\tt MIC:] Master Inormationsmanagement und Computersicherheit gOK
+	% \item[\tt MIE:] Master Industrielle Elektronik gOK
+	% \item[\tt MIT:] Master Intelligent Transport Systems gOk eonly
+	% \item[\tt MIW:] Master Internationales Wirtschaftsingenieurwesen gOK
+	% \item[\tt MMR:] Master Mechatronik/Robotik gOK
+	% \item[\tt MSE:] Master Softwareentwicklung gOK
+	% \item[\tt MST:] Master Sports Equipment Technology gOK eonly
+	% \item[\tt MTE:] Master Tissue Engineering and Regenerative Medicine gOK eonly
+	% \item[\tt MTI:] Master Telekommunikation und Internettechnologien gOK
+	% \item[\tt MTM:] Master Innovations- und Technologiemanagement gOK
+	% \item[\tt MTU:] Master Technisches Umweltmanagement und Ökotoxikologie gOK
+	% \item[\tt MWI:] Master Wirtschaftsinformatik gOK
+	% \end{itemize}
+	%
+	% Die Initialisierung der Optionen für die einzelnen Studiengänge erfolgt mittels
+	%
+% \end{macro}
+%
+% \begin{macro}{\doctype}
+	% Der Dokumententyp legt das Design des Deckblattes und die Anführung eines eventuell definierten Vorspanns (Eidesstattliche Erklärung, Zusammanfassung und Schlagworte auf deutsch und englisch, Danksagung und Inhaltsverzeichnis) fest. Die Initialisierung der Option erfolgt mittels
+%
+% Zur Verfügung stehen die Optionen
+	% \begin{itemize}
+		% \item[\bf Bachelor] zur Erstellung einer Bachelorarbeit
+		% \item[\bf Master] zur Erstellung einer Masterarbeit 
+		% \item[\bf Seminar] zur Erstellung einer Seminararbeit
+		% \item[\bf Projekt] zur Erstellung eines Projektberichts
+		% \item[\bf Praktikum] zur Erstellung eines Praktikumberichts oder 
+		% \item[\bf Labor] zur Erstellung eines Laborprotokolls.
+	% \end{itemize}
+%
+% Tabelle~\ref{tab:titelei} fasst zusammen welche wissenschaftliche Arbeit mit welcher Titelei versehen wird. Dabei bedeutet X, dass dieser Teil der Titelei bedingungslos gesetzt wird. P bedeutet, dass dieser Teil der Titelei in Abhängigkeit der Sprache gesetzt wird (Projektbericht auf deutsch ==> nur eine Kurzfassung).
+% \begin{table}[htbp]
+% \centering
+% \caption{Titelei in Abhängigkeit der wissenschaftlichen Arbeit}\label{tab:titelei}
+% \DeleteShortVerb{\|}
+% \begin{tabular}{|p{0.2\linewidth}||c|c|c|c|c|c|}\hline
+%                                &Bachelor   &Master  &Seminar &Projekt &Praktikum  &Labor\\\hline\hline
+%    Eidesstattliche Erklärung   &X          &X       &        &        &           &\\\hline
+%    Kurzfassung                 &X          &X       &X       &P       &           &\\\hline
+%    Abstract                    &X          &X       &X       &P       &           &\\\hline
+%    Danksagung                  &X          &X       &        &        &           &\\\hline
+% \end{tabular}
+% \MakeShortVerb{\|}
+% \end{table}
+% \end{macro}
+%
+% Ist die englische Sprache gewählt, so wird auch {\tt \textbackslash doctype} auf englisch umgestellt:
+%
+%    \begin{macrocode}
+\ifstr{\sprache}{english}{%
+  \ifstr{\doctype}{BACHELORARBEIT}{%
+    \renewcommand*{\doctype}{BACHELORTHESIS}}{}
+  \ifstr{\doctype}{MASTERARBEIT}{%
+    \renewcommand*{\doctype}{MASTERTHESIS}}{}
+  \ifstr{\doctype}{SEMINARARBEIT}{%
+    \renewcommand*{\doctype}{SEMINAR PAPER}}{}
+  \ifstr{\doctype}{PROJEKTBERICHT}{%
+    \renewcommand*{\doctype}{PROJECT REPORT}}{}
+  \ifstr{\doctype}{PRAKTIKUMSBERICHT}{%
+    \renewcommand*{\doctype}{INTERNSHIP REPORT}}{}
+  \ifstr{\doctype}{Laborbericht}{%
+    \renewcommand*{\doctype}{LABORATORY REPORT}}}{}
+
+  \renewcommand*{\doctypeprint}{\doctype}
+  \ifstr{\doctypeprint}{MASTERTHESIS}{%
+    \renewcommand*{\doctypeprint}{MASTER THESIS}}{}
+  \ifstr{\doctypeprint}{BACHELORTHESIS}{%
+    \renewcommand*{\doctypeprint}{BACHELOR PAPER}}{}
+
+%    \end{macrocode}
+%
+% \begin{macro}{\cover}
+% Diese Option kann nicht vom Anwender selbst geändert werden. Die Wahl des Hintergrundes des Deckblattes erfolgt automatisch zunächst nach der Wahl des Studiengangs und der eingestellten Sprache\footnote{Nicht alle Studiengänge erlauben ein Deckblatt in beiden Sprachen.}. 
+%
+% {\bf Achtung!} Wird zusätzlich noch ein Dokumententyp (Master, Bachelor, Seminar, Projekt, Praktikum, Labor) angegeben, so wird {\tt \textbackslash cover} automatisch mit dem entsprechenden neutralen Hintergrund überschrieben. Im Falle einer Zuweisung des Dokumententyps wird daher die Angabe eines Studiengangs ignoriert. Die Zuweisung des Hintergrundbildes erfolgt mittels
+%
+	%    \begin{macrocode}
+\ifstr{\sprache}{german}{%
+\ifstr{\degreecourse}{BBE}{\renewcommand*{\cover}{PICs/BBE}%
+\renewcommand*{\degreecourse}{Biomedical Engineering}}{}
+  \ifstr{\degreecourse}{BEE}{\renewcommand*{\cover}{PICs/BEE}%
+\renewcommand*{\degreecourse}{Urbane Erneuerbare Energietechniken}}{}
+\ifstr{\degreecourse}{BEL}{\renewcommand*{\cover}{PICs/BEL}%
+\renewcommand*{\degreecourse}{Elektronik}}{}
+\ifstr{\degreecourse}{BEW}{\renewcommand*{\cover}{PICs/BEW}%
+\renewcommand*{\degreecourse}{Elektronik/\allowbreak{}Wirtschaft}}{}
+\ifstr{\degreecourse}{BIC}{\renewcommand*{\cover}{PICs/BIC}%
+\renewcommand*{\degreecourse}{Informations- und %
+  Kommunikationssysteme}}{}
+\ifstr{\degreecourse}{BIF}{\renewcommand*{\cover}{PICs/BIF}%
+\renewcommand*{\degreecourse}{Informatik}}{}
+\ifstr{\degreecourse}{BIW}{\renewcommand*{\cover}{PICs/BIW}%
+\renewcommand*{\degreecourse}{Internationales %
+  Wirtschaftsingenieurwesen}}{}
+\ifstr{\degreecourse}{BMR}{\renewcommand*{\cover}{PICs/BMR_MMR}%
+\renewcommand*{\degreecourse}{Mechatronik/\allowbreak{}Robotik}}{}
+\ifstr{\degreecourse}{BMB}{\renewcommand*{\cover}{PICs/BMB}%
+\renewcommand*{\degreecourse}{Maschinenbau}}{}
+\ifstr{\degreecourse}{BSA}{\renewcommand*{\cover}{PICs/BSA}%
+\renewcommand*{\degreecourse}{Smart Homes und Assistive Technologies}}{}
+\ifstr{\degreecourse}{BST}{\renewcommand*{\cover}{PICs/BST}%
+\renewcommand*{\degreecourse}{Sports Equipment Technology}}{}
+\ifstr{\degreecourse}{BVU}{\renewcommand*{\cover}{PICs/BVU}%
+\renewcommand*{\degreecourse}{Verkehr und Umwelt}}{}
+\ifstr{\degreecourse}{BWI}{\renewcommand*{\cover}{PICs/BWI_MWI}
+\renewcommand*{\degreecourse}{Wirtschaftsinformatik}}{}
+\ifstr{\degreecourse}{MBE}{\renewcommand*{\cover}{PICs/MBE}%
+\renewcommand*{\degreecourse}{Medical Engineering \& e-Health}}{}
+\ifstr{\degreecourse}{MEE}{\renewcommand*{\cover}{PICs/MEE}%
+\renewcommand*{\degreecourse}{Erneuerbare Urbane Energiesysteme}}{}
+\ifstr{\degreecourse}{MES}{\renewcommand*{\cover}{PICs/MES}%
+\renewcommand*{\degreecourse}{Embedded Systems}}{}
+\ifstr{\degreecourse}{MGR}{\renewcommand*{\cover}{PICs/MGR}%
+\renewcommand*{\degreecourse}{Gesundheits- und %
+  Rehabilitationstechnik}}{}
+\ifstr{\degreecourse}{MGS}{\renewcommand*{\cover}{PICs/MGS}%
+\renewcommand*{\degreecourse}{Game Engineering und Simulation}}{}
+\ifstr{\degreecourse}{MIC}{\renewcommand*{\cover}{PICs/MIC}%
+\renewcommand*{\degreecourse}{IT-Security}}{}
+\ifstr{\degreecourse}{MIE}{\renewcommand*{\cover}{PICs/MIE}%
+\renewcommand*{\degreecourse}{Industrielle Elektronik}}{}
+\ifstr{\degreecourse}{MIT}{\renewcommand*{\cover}{PICs/MIT}%
+\renewcommand*{\degreecourse}{Intelligent Transport Systems}}{}
+\ifstr{\degreecourse}{MIW}{\renewcommand*{\cover}{PICs/MIW}%
+\renewcommand*{\degreecourse}{Internationales %
+  Wirtschaftsingenieurwesen}}{}
+\ifstr{\degreecourse}{MMR}{\renewcommand*{\cover}{PICs/BMR_MMR}%
+\renewcommand*{\degreecourse}{Mechatronik/\allowbreak{}Robotik}}{}
+\ifstr{\degreecourse}{MSC}{\renewcommand*{\cover}{PICs/MIT}%
+\renewcommand*{\degreecourse}{Integrative Stadtentwicklung -- Smart City}}{}
+\ifstr{\degreecourse}{MSE}{\renewcommand*{\cover}{PICs/MSE}%
+\renewcommand*{\degreecourse}{Softwareentwicklung}}{}
+\ifstr{\degreecourse}{MST}{\renewcommand*{\cover}{PICs/MST}%
+\renewcommand*{\degreecourse}{Sports Equipment Technology}}{}
+\ifstr{\degreecourse}{MTE}{\renewcommand*{\cover}{PICs/MTE_en}%
+\renewcommand*{\degreecourse}{Tissue Engineering and Regenerative %
+Medicine}}{}
+\ifstr{\degreecourse}{MTI}{\renewcommand*{\cover}{PICs/MTI}%
+\renewcommand*{\degreecourse}{Telekommunikation und %
+  Internettechnologien}}{}
+\ifstr{\degreecourse}{MTM}{\renewcommand*{\cover}{PICs/MTM}%
+\renewcommand*{\degreecourse}{Innovations- und %
+  Technologiemanagement}}{}
+\ifstr{\degreecourse}{MTU}{\renewcommand*{\cover}{PICs/MTU}%
+\renewcommand*{\degreecourse}{Technisches Umweltmanagement und %
+  {\"O}kotoxikologie}}{}
+\ifstr{\degreecourse}{MWI}{\renewcommand*{\cover}{PICs/BWI_MWI}%
+\renewcommand*{\degreecourse}{Wirtschaftsinformatik}}
+}{}
+		
+\ifstr{\sprache}{english}{%
+\ifstr{\degreecourse}{BBE}{\renewcommand*{\cover}{PICs/BBE}%
+\renewcommand*{\degreecourse}{Biomedical Engineering}}{}
+\ifstr{\degreecourse}{BEE}{\renewcommand*{\cover}{PICs/BEE}%
+\renewcommand*{\degreecourse}{Urban Renewable Energy Technologies}}{}
+\ifstr{\degreecourse}{BEL}{\renewcommand*{\cover}{PICs/BEL}%
+\renewcommand*{\degreecourse}{Electronic Engineering}}{}
+\ifstr{\degreecourse}{BEW}{\renewcommand*{\cover}{PICs/BEW_en}%
+\renewcommand*{\degreecourse}{Electronics and Business}}{}
+\ifstr{\degreecourse}{BIC}{\renewcommand*{\cover}{PICs/BIC}%
+\renewcommand*{\degreecourse}{Information and Communication Systems %
+and Services}}{}
+\ifstr{\degreecourse}{BIF}{\renewcommand*{\cover}{PICs/BIF}%
+\renewcommand*{\degreecourse}{Computer Science}}{}
+\ifstr{\degreecourse}{BIW}{\renewcommand*{\cover}{PICs/BIW}%
+\renewcommand*{\degreecourse}{International Business and %
+Engineering}}{}
+\ifstr{\degreecourse}{BMR}{\renewcommand*{\cover}{PICs/BMR_MMR}%
+\renewcommand*{\degreecourse}{Mechatronics/\allowbreak{}Robotics}}{}
+\ifstr{\degreecourse}{BMB}{\renewcommand*{\cover}{PICs/BMB}%
+\renewcommand*{\degreecourse}{Maschinenbau}}{}
+\ifstr{\degreecourse}{BSA}{\renewcommand*{\cover}{PICs/BSA}%
+\renewcommand*{\degreecourse}{Smart Homes und Assistive Technologies}}{}
+\ifstr{\degreecourse}{BST}{\renewcommand*{\cover}{PICs/BST}%
+\renewcommand*{\degreecourse}{Sports Equipment Technology}}{}
+\ifstr{\degreecourse}{BVU}{\renewcommand*{\cover}{PICs/BVU}%
+\renewcommand*{\degreecourse}{Transport and Environment}}{}
+\ifstr{\degreecourse}{BWI}{\renewcommand*{\cover}{PICs/BWI_MWI_en}%
+\renewcommand*{\degreecourse}{Business Informatics}}{}
+\ifstr{\degreecourse}{MBE}{\renewcommand*{\cover}{PICs/MBE}%
+\renewcommand*{\degreecourse}{Medical Engineering \& e-Health}}{}
+\ifstr{\degreecourse}{MEE}{\renewcommand*{\cover}{PICs/MEE}%
+\renewcommand*{\degreecourse}{Renewable Urban Energy Systems}}{}
+\ifstr{\degreecourse}{MES}{\renewcommand*{\cover}{PICs/MES}%
+\renewcommand*{\degreecourse}{Embedded Systems}}{}
+\ifstr{\degreecourse}{MGR}{\renewcommand*{\cover}{PICs/MGR}%
+\renewcommand*{\degreecourse}{Healthcare and Rehabilitation %
+  Technology}}{}
+\ifstr{\degreecourse}{MGS}{\renewcommand*{\cover}{PICs/MGS}%
+\renewcommand*{\degreecourse}{Game Engineering and Simulation %
+  Technology}}{}
+\ifstr{\degreecourse}{MIC}{\renewcommand*{\cover}{PICs/MIC_en}%
+\renewcommand*{\degreecourse}{IT-Security}}{}
+\ifstr{\degreecourse}{MIE}{\renewcommand*{\cover}{PICs/MIE}%
+\renewcommand*{\degreecourse}{Industrial Electronics}}{}
+\ifstr{\degreecourse}{MIT}{\renewcommand*{\cover}{PICs/MIT}%
+\renewcommand*{\degreecourse}{Intelligent Transport Systems}}{}
+\ifstr{\degreecourse}{MIW}{\renewcommand*{\cover}{PICs/MIW}%
+\renewcommand*{\degreecourse}{International Business and %
+Engineering}}{}
+\ifstr{\degreecourse}{MMB}{\renewcommand*{\cover}{PICs/BMB}%
+\renewcommand*{\degreecourse}{Maschinenbau}}{}
+\ifstr{\degreecourse}{MMR}{\renewcommand*{\cover}{PICs/BMR_MMR}%
+\renewcommand*{\degreecourse}{Mechatronics/\allowbreak{}Robotics}}{}
+\ifstr{\degreecourse}{MSC}{\renewcommand*{\cover}{PICs/MIT}%
+\renewcommand*{\degreecourse}{Smart City}}{}
+\ifstr{\degreecourse}{MSE}{\renewcommand*{\cover}{PICs/MSE}%
+\renewcommand*{\degreecourse}{Software Engineering}}{}
+\ifstr{\degreecourse}{MST}{\renewcommand*{\cover}{PICs/MST}%
+\renewcommand*{\degreecourse}{Sports Equipment Technology}}{}
+\ifstr{\degreecourse}{MTE}{\renewcommand*{\cover}{PICs/MTE}%
+\renewcommand*{\degreecourse}{Tissue Engineering and Regenerative %
+Medicine}}{}
+\ifstr{\degreecourse}{MTI}{\renewcommand*{\cover}{PICs/MTI_en}%
+\renewcommand*{\degreecourse}{Telecommunications- and Internet %
+  Technologies}}{}
+\ifstr{\degreecourse}{MTM}{\renewcommand*{\cover}{PICs/MTM}%
+\renewcommand*{\degreecourse}{Innovation and Technology Management}}{}
+\ifstr{\degreecourse}{MTU}{\renewcommand*{\cover}{PICs/MTU}%
+\renewcommand*{\degreecourse}{Environmental Management and %
+  Ecotoxicolgy}}{}
+\ifstr{\degreecourse}{MWI}{\renewcommand*{\cover}{PICs/BWI_MWI_en}%
+\renewcommand*{\degreecourse}{Information Systems Management}}{}
+}{}
+\ifstr{\doctype}{}{}{\ifstr{\institution}{Technikum}%
+  {\renewcommand*{\cover}{PICs/Arbeiten.jpg}}%
+  {\renewcommand*{\cover}{PICs/Arbeiten_Academy.jpg}}}
+%    \end{macrocode}
+% \end{macro} 
+%
+% \section{Neue Befehle}\label{kap:befehle}
+%
+% Um den gesamten Vorspann der einzelnen Dokumente setzen zu können, sind teilweise zusätzliche Angaben notwendig. Neben altbekannten Layout Elementen ({\tt \textbackslash title, \textbackslash extratitle, \textbackslash author}) werden hierzu eine Reihe neuer Befehle bereitgestellt. Im Gegensatz zu den optionalen Parametern, die direkt an die Dokumentenklasse übergeben werden, werden die nachfolgenden Befehle in der Präamble des Dokuments in der Form {\tt \textbackslash befehl\{Argument\}} verwendet.
+% \begin{macro}{\supervisor} 
+% Mit diesem Befehl wird der FH-Betreuer oder die FH Betreuerin der Arbeit angegeben. Ohne optionales Argument wird der FH Betreuer oder die FH Betreuerin auf dem deutschen Deckblatt als \glqq{}BegutachterIn\grqq{} geführt. Das von der FH vorgeschlagene Format entspricht:
+%
+% \hspace*{-74pt}{\tt\small \textbackslash supervisor\{Titel Vorname Name, Titel\}} für die Form mit Binnen-I.\\
+% \hspace*{-74pt}{\tt\small \textbackslash supervisor[Begutachter]\{Titel Vorname Name, Titel\}} für die männliche Form.\\
+% \hspace*{-74pt}{\tt\small \textbackslash supervisor[Begutachterin]\{Titel Vorname Name, Titel\}} für die weibliche Form.
+% \end{macro}
+%
+% \begin{macro}{\secondsupervisor} Mit diesem Befehl wird ein zweiter Betreuer angegeben. Dieser ist vor allem in Bachelor- und Masterarbeiten notwendig, da es in diesen Fällen ebenso einen Firmenbetreuer oder eine Firmenbetreuerin gibt. Auch in diesem Fall kann durch die Angabe eines optionalen Parameters, im Falle eines deutschen Deckblattes, die Titelei angepasst werden. Das von der FH vorgeschlagene Format entspricht:
+%
+% \hspace*{-74pt}{\tt\small \textbackslash secondsupervisor\{Titel Vorname Name, Titel\}} für die Form mit Binnen-I.\\
+% \hspace*{-74pt}{\tt\small \textbackslash secondsupervisor[Begutachter]\{Titel Vorname Name, Titel\}} für die männliche Form.\\
+% \hspace*{-74pt}{\tt\small \textbackslash secondsupervisor[Begutachterin]\{Titel Vorname Name, Titel\}} für die weibliche Form.
+% \end{macro}
+%
+% \begin{macro}{\studentnumber} Mit diesem Befehl wird die individuelle Matrikelnummer der/des Studierenden angegeben. Die Nummer ist ohne jeden Vorsatz zu verwenden.
+% \end{macro}
+%
+% \begin{macro}{\place} gibt den Ort an, an dem die Arbeit final bearbeitet wurde. Dies wird in den meisten Fällen Wien sein, kann aber bei Fertigstellung des Dokuments außerhalb von Wien davon abweichen.
+% \end{macro}
+%
+% \begin{macro}{\kurzfassung} Mit diesem Befehl wird die deutsche Kurzfassung der Arbeit angegeben. Es können Absatzformatierungen innerhalb der geschlossenen Klammern verwendet werden. Am unteren Seitenrand der deutschen Kurzfassung werden die deutschen Schlagworte angeführt. Wird keine deutsche Kurzfassung angegeben, so bleibt der Platz auf der Seite frei und es werden nur die deutschen Schlagworte gesetzt. Fehlen Angaben zur deutschen Kurzfassung und den deutschen Schlagworten, so entfällt die Seite im Dokument.
+% \end{macro}
+%
+% \begin{macro}{\schlagworte} Mit diesem Befehl werden die deutschen Schlagworte der Arbeit anegegeben. Die deutschen Schlagworte werden am unteren Seitenrand der deutschen Kurzfassung angeführt. Werden keine deutschen Schlagworte angegeben, so bleibt der Platz auf der Seite frei und es wird nur die deutsche Kurzfassung gesetzt. Fehlen Angaben zur deutschen Kurzfassung und den deutschen Schlagworten, so entfällt die Seite im Dokument.
+% \end{macro}
+%
+% \begin{macro}{\outline} Mit diesem Befehl wird die englische Kurzfassung der Arbeit angegeben (Achtung: da der Befehl andersweitig verwendet wird, wird hier nicht das sonst übliche abstract verwendet!). Es können Absatzformatierungen innerhalb der geschlossenen Klammern verwendet werden. Am unteren Seitenrand der englischen Kurzfassung werden die englischen Schlagworte angeführt. Wird keine englische Kurzfassung angegeben, so bleibt der Platz auf der Seite frei und es werden nur die englischen Schlagworte gesetzt. Fehlen Angaben zur englischen Kurzfassung und den englischen Schlagworten, so entfällt die Seite im Dokument.
+% \end{macro}
+%
+% \begin{macro}{\keywords} Mit diesem Befehl werden die englischen Schlagworte der Arbeit anegegeben. Die englischen Schlagworte werden am unteren Seitenrand der englischen Kurzfassung angeführt. Werden keine englischen Schlagworte angegeben, so bleibt der Platz auf der Seite frei und es wird nur die englische Kurzfassung gesetzt. Fehlen Angaben zur englischen Kurzfassung und den englischen Schlagworten, so entfällt die Seite im Dokument.
+% \end{macro}
+%
+% \begin{macro}{\acknowledgements} Mit diesem Befehl werden die Danksagungen für Arbeit angegeben. Es können Absatzformatierungen innerhalb der geschlossenen Klammern verwendet werden.
+% \end{macro}
+%
+% Die Initialisierung der Befehle erfolgt über
+%    \begin{macrocode}
+\newcommand*{\@supervisor}{}
+\newcommand*{\@supervisordesc}{}
+\newcommand{\supervisor}[2][]{\gdef\@supervisordesc{#1}\gdef\@supervisor{#2}}
+\newcommand*{\@secondsupervisor}{}
+\newcommand*{\@secondsupervisordesc}{}
+\newcommand{\secondsupervisor}[2][]{\gdef\@secondsupervisordesc{#1}\gdef\@secondsupervisor{#2}}
+\newcommand*{\@studentnumber}{}
+\newcommand{\studentnumber}[1]{\gdef\@studentnumber{#1}}
+\newcommand*{\@place}{}
+\newcommand{\place}[1]{\gdef\@place{#1}}
+\newcommand*{\@kurzfassung}{}
+\newcommand{\kurzfassung}[1]{\gdef\@kurzfassung{#1}}
+\newcommand*{\@schlagworte}{}
+\newcommand{\schlagworte}[1]{\gdef\@schlagworte{#1}}
+\newcommand*{\@outline}{}
+\newcommand{\outline}[1]{\gdef\@outline{#1}}
+\newcommand*{\@keywords}{}
+\newcommand{\keywords}[1]{\gdef\@keywords{#1}}
+\newcommand*{\@acknowledgements}{}
+\newcommand{\acknowledgements}[1]{\gdef\@acknowledgements{#1}}
+%    \end{macrocode}
+%
+% Im Dokument werden entsprechend dem Corporate Identity Design der FH Technikum Wien serifenlose Schriften (Helvetica) verwendet. Dazu wird die normale Schrift als seriefenlos definiert, und danach aktiviert.
+%
+%    \begin{macrocode}
+
+\providecommand{\sc}{}
+\renewcommand{\sc}{\normalfont\scshape}
+\renewcommand*{\familydefault}{\sfdefault}\selectfont
+\normalfont\selectfont
+
+%    \end{macrocode}
+%
+% \begin{macro}{\maketitle} Die Befehl für die Titelseite wird vollkommenen umdefiniert. Im Falle eines definierten Dokumententypes und vollständig belegten Befehlen erzeugt der Befehl das Deckblatt, die eidesstattliche Erklärung, die deutsche Kurzfassung inkl. der deutschen Schlagworte, die englische Kurzfassung inkl der englischen Schlagworte, die Danksagung und das Inhaltsverzeichnis, also mindestens 6 Seiten. Es wurde versucht, möglichst viele potentielle Fehleingaben abzufangen. Die Initialisierung beginnt mit einer Neudefinition des alten {\tt \textbackslash maketitle}--Befehls. Ebenso wird der \bgroup\tt\textbackslash{}and\egroup--Befehl umdefiniert. Durch die neue Definition ist es möglich, auch mehrere Autoren und mehrere Matrikelnummern anzugeben.
+%
+%    \begin{macrocode}
+\renewcommand{\and}{\newline}
+\renewcommand*\maketitle[1][1]{%
+%    \end{macrocode}
+%
+% Die Initilisierung der Titelseite beginnt mit der Festlegung, dass im Vorspann der zu erstellenden Arbeiten keine Seitenzahlen verwendet werden:
+%
+%    \begin{macrocode}
+\begin{titlepage}
+\pagestyle{empty}
+%    \end{macrocode}
+% 
+% Das Hintergrundbild des Deckblatts wird als Wallpaper mit den Abmaßen der ganzen Seite festgelegt
+%
+%    \begin{macrocode}
+\tikzifexternalizing{}{%
+  \ThisTileWallPaper{\paperwidth}{\paperheight}{\cover}%
+}
+  
+%    \end{macrocode}
+%
+% Für den Fall, dass kein {\tt \textbackslash documenttype} definiert wurde (kein Bachelor, Master, Seminar Praktikum oder Labor als optionaler Parameter übergeben wurde), handelt es sich um ein Dokument für einen bestimmten Studiengang. Dieser hat einen einseitigen Vorspann (ein reines Deckblatt) im Gegensatz den den 5 oben angeführten Dokumenten. Wurde eine der 5 Arbeiten gewühlt, so wird entsprechend der Alternativeode ausgeführt
+% 
+% Zunächst wir der Statur des Dokumententyps abgefragt
+%    \begin{macrocode}
+	\ifstr{\doctype}{}
+	{
+%    \end{macrocode}
+%
+% Titel und Subtitel werden auf der Deckseite unten in TW--blauer Schrift gesetzt. Dazu wird die Schriftfarbe auf TW--blau umgestellt und mit einem vertikalen Sprung die richtige Position für die Überschrift angewählt.	
+%    \begin{macrocode}
+		\color{TWblue}
+		\null\vspace{125pt}
+    \setcounter{page}{-9}
+		
+%    \end{macrocode}
+%
+%	Anschließend wird der Titel in einer Minipage--Umgebung gesetzt. Mit der Wahl der Minipage--Umgebung ist garantiert, dass man keinen Textüberlauf über die Ränder des Dokuments hat. Die Minipage wird horizonal an die korrekte Position geschoben. Der abschließende vertikale Abstand dient der korrekten Positionierung des Extratitels
+%
+%    \begin{macrocode}
+\hspace*{-26pt}\begin{minipage}{0.66\linewidth}
+  \huge\sffamily \scalebox{1.75}{\begin{minipage}{\linewidth}\@title\end{minipage}}
+\end{minipage}\vspace{23pt}
+
+%    \end{macrocode}
+%
+% Für die Stuiengangsdokumente kann ein Zusatz zum Dokumententitel mit dem Befehl {\tt \textbackslash extratitle\{Hierher den Extratitel\}} definiert werden. Dieser wird mit nachfolgendem Befehl in einer Minipage gesetzt, so dass garantiert ist, dass der Extratitel sauber positioniert wird. 
+%
+%    \begin{macrocode}			
+\hspace*{-24.75pt}\begin{minipage}{0.66\linewidth}
+  \huge\sffamily \scalebox{1.25}{\begin{minipage}{\linewidth}\@extratitle\end{minipage}}
+\end{minipage}\vspace{47pt}
+\setcounter{page}{0}}
+%    \end{macrocode}
+%	
+% Ist ein Dokumententyp angegeben, so wird der nachfolgende Alternativcode ausgeführt. Diese Dokumente haben einen mehrseitigen Dokumentenvorspann, der automatisch und vollständig generiert wird. Die Schriftfarbe auf dem Deckblatt ist weiss. Sollte ein Entwurf erzeugt werden, kann durch die weiße Schriftfarbe jedoch nciht erkannt werden ob das Titelbild passt. Deswegen wird im Falle eines Entwurfs die Schriftfarbe bei Schwarz belassen. Der Seitenzähler wird auf -9 gesetzt, so dass im erzeugten Dokument keine Seitenzahl doppelt vergeben ist. Da im Dokumentenvorspann die Anzeige der Seitenzahlen ausgeschalten ist, spielt diese Definition keine weitere Rolle.
+%
+%    \begin{macrocode}
+{
+  \ifdraft{\color{red}}{\color{black}}
+  \null\vspace{8pt}
+  \setcounter{page}{-9}
+  
+%    \end{macrocode}
+%
+% Im ersten Schritt wird der Dokumententyp ausgegeben. Dieser ist entsprechend obigen Definitionen in Großbuchstaben festgelegt. Die Auswahl entsprechend der Sprache erfolgte ebenfalls bereits weiter oben.
+%  	
+%    \begin{macrocode}
+		\ifdraft{\hspace*{-30pt}\scalebox{1.85}{\sffamily\textbf\doctypeprint -- DRAFT}}{\hspace*{-30pt}\scalebox{1.85}{\sffamily\textbf\doctypeprint}}
+		\vspace{17pt}
+		
+%    \end{macrocode}
+%		
+% Im nächsten Schritt wird der Studiengang ausgegeben. Da die Titel des Studiengangs {\em Technisches Umweltmanagement und Ökotoxikologie} als einziger zu lang für die Seitenbreite ist, wird dieser in einer kleineren minipage--Umgebung gesetzt, damit der Zeilenumbruch harmonisch erscheint.
+%
+%    \begin{macrocode}
+\hspace*{-34pt}\scalebox{1.5}{%
+  \ifstr{\degreecourse}{Technisches Umweltmanagement und 
+    {\"O}kotoxikologie}
+  {
+    \begin{minipage}{0.64\linewidth}
+      \ifstr{\sprache}{german}{\ifstr{\doctype}{MASTERARBEIT}{zur Erlangung des akademischen Grades\\\glqq{}Master of Science in Engineering\grqq{}\\im Studiengang }{\ifstr{\doctype}{BACHELORARBEIT}{zur Erlangung des akademischen Grades\\\glqq{}Bachelor of Science in Engineering\grqq{}\\im Studiengang }{Im Studiengang}}}{\ifstr{\doctype}{MASTERTHESIS}{Thesis submitted in partial fulfillment of the requirements for the degree of Master of Science in Engineering at the University of Applied Sciences Technikum Wien - Degree Program }{\ifstr{\doctype}{BACHELORTHESIS}{Term paper submitted in partial fulfillment of the requirements for the degree of Bachelor of Science in Engineering at the University of Applied Sciences Technikum Wien - Degree Program }{In}}}
+      \degreecourse
+    \end{minipage}\vspace{5pt}}
+  {
+    \begin{minipage}{0.64\linewidth}
+      \ifstr{\sprache}{german}{\ifstr{\doctype}{MASTERARBEIT}{zur Erlangung des akademischen Grades\\\glqq{}Master of Science in Engineering\grqq{}\\im Studiengang }{\ifstr{\doctype}{BACHELORARBEIT}{zur Erlangung des akademischen Grades\\\glqq{}Bachelor of Science in Engineering\grqq{}\\im Studiengang }{Im Studiengang}}}{\ifstr{\doctype}{MASTERTHESIS}{Thesis submitted in partial fulfillment of the requirements for the degree of Master of Science in Engineering at the University of Applied Sciences Technikum Wien - Degree Program }{\ifstr{\doctype}{BACHELORTHESIS}{Term paper submitted in partial fulfillment of the requirements for the degree of Bachelor of Science in Engineering at the University of Applied Sciences Technikum Wien - Degree Program }{In}}}
+      \degreecourse\vspace{5pt}
+    \end{minipage}}}
+    
+%    \end{macrocode}		
+%		
+% Auch der Titel des Dokuments wird in einer minipage--Umgebung gesetzt, um ein Überlaufen über die Grenzen des Papierformats zu vermeiden. Dies garantiert die korrekte Breite des Textes auch bei mehrzeiligen Titeln. Es wird dringend empfohlen, keine Titel zu verwenden, die mehr als drei Zeilen in Anspruch nehmen.
+%
+%    \begin{macrocode}
+  \vspace{54.7pt}
+  \hspace*{-30pt}\begin{minipage}{0.9625\linewidth}
+  	\huge\bfseries\sffamily \@title
+	\end{minipage}\vspace{47pt}
+
+%    \end{macrocode}
+%		
+% Unter den Titel der Arbeit wird in kleinerer Schrift die/der AutorIn des Dokuments ausgegeben. Abhängig von der gewählten Sprache wird automatisch ein Präfix zum AutorInnennamen vergeben. Dieser lauten im Deutschen {\em Ausgeführt von} und im Englischen {\em By}. Durch das setzen des Autors in der minipage ist es möglich auch mehrere Autoren auf einer Titelseite zu setzen. 
+%
+%    \begin{macrocode}
+\Large
+\hspace*{-34pt}%
+\ifstr{\sprache}{german}{Ausgef{\"u}hrt von:~}{By:~}%
+\begin{minipage}[t]{0.5\linewidth}\@author\end{minipage}%
+\vspace{0.33\baselineskip}%
+
+%    \end{macrocode}
+%
+% Die eindeutige Identifikation einer/eines Studierenden erfolgt über die Personenkennzahl (Vergleichbar mit der Matrikelnummer an anderen Universitäten). Diese wird als nächstes ausgegeben
+%
+%    \begin{macrocode}
+\hspace*{-34pt}%
+\ifstr{\sprache}{german}{Personenkennzeichen:~}{Student Number:~}%
+\begin{minipage}[t]{0.25\linewidth}\@studentnumber\end{minipage}%
+\vspace{\baselineskip}%
+  
+%    \end{macrocode}
+%
+% Um eine eindeutige Zuordnung einer Beurteilung zur beurteilenden Person zu ermöglichen, wird diese Betreuungsperson auf dem Deckblatt namentlich angeführt.
+%
+%    \begin{macrocode}
+\hspace*{-34pt}%
+\ifx\@secondsupervisor\@empty%
+%Ein Betreuer
+\ifx\@supervisordesc\@empty%
+\ifstr{\sprache}{german}{BegutachterIn:~}{Supervisor:~}%
+\else%
+\@supervisordesc:~%
+\fi%
+\begin{minipage}[t]{0.6\linewidth}%
+\bgroup\@supervisor\egroup%
+\end{minipage}\vspace{0.8\baselineskip}%
+\else%
+%Zwei Betreuer
+\ifx\@supervisordesc\@empty%
+\ifstr{\sprache}{german}{\gdef\@supervisordesc{BegutachterInnen}}{\gdef\@supervisordesc{Supervisors}}%
+\fi%
+\ifx\@secondsupervisordesc\@empty%
+\gdef\@secondsupervisordesc{}%
+\fi%
+\newlength\TWLength%
+\newlength\TWLengthA%
+\newlength\TWLengthB%
+\settowidth\TWLengthA{\@supervisordesc:}%
+\settowidth\TWLengthB{\@secondsupervisordesc:}%
+\ifdim \TWLengthA>\TWLengthB%
+\setlength\TWLength\TWLengthA%
+\else%
+\setlength\TWLength\TWLengthB%
+\fi%
+\begin{minipage}[t]{\TWLength}%
+\@supervisordesc:\\%
+\ifx\@secondsupervisordesc\@empty%
+\else%
+\@secondsupervisordesc:%
+\fi%
+\end{minipage}~%
+\begin{minipage}[t]{0.6\linewidth}%
+\bgroup\@supervisor\egroup\\%
+\bgroup\@secondsupervisor\egroup%
+\end{minipage}\vspace{0.8\baselineskip}%
+\fi%
+  
+%    \end{macrocode}
+%
+% Abschließend wird der Ort des Verfassens der Arbeit angeführt. In den meisten Fällen wird dies Wien sein. Als Datum des Verfassens der Arbeit wird automatisch der Tag des letzten Kompilierens des Dokuments gesetzt.
+%
+%    \begin{macrocode}
+\hspace*{-34pt}%
+\@place%
+\ifstr{\sprache}{german}{, den~}{,~}\today%
+
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch und dem Setzen der Schriftfarbe auf schwarz, der Schriftgröße auf Normalgröße und dem Schriftgrad auf aufrecht wird die Eidesstattliche Erklärung inkl. der vorbereiteten zu leistenden Unterfertigungen (Ort, Datum, Unterschrift) auf einem separaten Blatt gesetzt. Die Auswahl der Sprache definiert die Sprache der Erklärung automatisch.
+%	
+%    \begin{macrocode}
+\clearpage
+\color{black}\normalsize\mdseries
+
+%    \end{macrocode}
+%
+% Ab hier werden verschiedene Einstellungen getroffen. In diesem Block wird der Projektbericht abgehandelt. Der Projektbericht benötigt neben dem Titelblatt auch eine Kurzfassung beziehungsweise ein Abstract. Die Unterscheidung erfolgt auf Grund der eingestellten Sprache.
+%	
+%    \begin{macrocode}
+\ifstr{\doctype}{PROJEKTBERICHT}{
+	\ifx\@kurzfassung\@empty
+	\else\clearpage
+		\chapter*{Kurzfassung}
+		\@kurzfassung
+		\ifx\@schlagworte\@empty
+		\else\vfill\paragraph*{Schlagworte:}\@schlagworte
+		\fi
+	\fi}{}
+\ifstr{\doctype}{PROJECT REPORT}{
+	\ifx\@outline\@empty
+	\else\clearpage
+		\chapter*{Abstract}
+		\@outline
+		\ifx\@keywords\@empty
+		\else\vfill\paragraph*{Keywords:}\@keywords
+		\fi
+	\fi}{}
+
+%    \end{macrocode}
+%
+% Ab hier werden verschiedene Einstellungen getroffen. In diesem Block wird die Seminararbeit abgehandelt. Die Seminararbeit benötigt neben dem Titelblatt auch eine Kurzfassung und ein Abstract. Je nach Sprache ist entweder die Kurzfassung, oder das Abstract zuerst
+%	
+%    \begin{macrocode}
+\ifstr{\doctype}{SEMINARARBEIT}{
+	\ifx\@kurzfassung\@empty
+	\else\clearpage
+		\chapter*{Kurzfassung}
+		\@kurzfassung
+		\ifx\@schlagworte\@empty
+		\else\vfill\paragraph*{Schlagworte:}\@schlagworte
+		\fi
+	\fi
+	\ifx\@outline\@empty
+	\else\clearpage
+		\chapter*{Abstract}
+		\@outline
+		\ifx\@keywords\@empty
+		\else\vfill\paragraph*{Keywords:}\@keywords
+		\fi
+	\fi}{}
+\ifstr{\doctype}{SEMINAR PAPER}{
+	\ifx\@outline\@empty
+	\else\clearpage
+		\chapter*{Abstract}
+		\@outline
+		\ifx\@keywords\@empty
+		\else\vfill\paragraph*{Keywords:}\@keywords
+		\fi
+	\fi
+	\ifx\@kurzfassung\@empty
+	\else\clearpage
+		\chapter*{Kurzfassung}
+		\@kurzfassung
+		\ifx\@schlagworte\@empty
+		\else\vfill\paragraph*{Schlagworte:}\@schlagworte
+		\fi
+	\fi}{}
+
+%    \end{macrocode}
+%
+% Ab diesem Block werden die Thesen abgehandelt. Die Thesen benötigen eine Eidesstattliche Erklärung, eine Kurzfassung und ein Abstract.
+%	
+%    \begin{macrocode}
+\ifstr{\doctype}{BACHELORARBEIT}{
+  \chapter*{Eidesstattliche Erkl{\"a}rung}
+    \glqq Ich, als Autor / als Autorin und Urheber / Urheberin der
+    vorliegenden Arbeit, best{\"a}tige mit meiner Unterschrift die
+    Kenntnisnahme der einschl{\"a}gigen urheber- und hochschulrechtlichen
+    Bestimmungen (vgl. Urheberrechtsgesetz idgF sowie Satzungsteil
+    Studienrechtliche Bestimmungen / Pr{\"u}fungsordnung der FH Technikum
+    Wien idgF).\\[\baselineskip]
+    Ich erkl{\"a}re hiermit, dass ich die vorliegende Arbeit selbst{\"a}ndig
+    angefertigt und Gedankengut jeglicher Art aus fremden sowie
+    selbst verfassten Quellen zur G{\"a}nze zitiert habe. Ich bin mir
+    bei Nachweis fehlender Eigen- und Selbstst{\"a}ndigkeit sowie dem
+    Nachweis eines Vorsatzes zur Erschleichung einer positiven
+    Beurteilung dieser Arbeit der Konsequenzen bewusst, die von der
+    Studiengangsleitung ausgesprochen werden k{\"o}nnen (vgl. Satzungsteil
+    Studienrechtliche Bestimmungen / Pr{\"u}fungsordnung der FH Technikum
+    Wien idgF).\\[\baselineskip]
+    Weiters best{\"a}tige ich, dass ich die vorliegende Arbeit bis dato
+    nicht ver{\"o}ffentlicht und weder in gleicher noch in {\"a}hnlicher
+    Form einer anderen Pr{\"u}fungsbeh{\"o}rde vorgelegt habe. Ich versichere,
+    dass die abgegebene Version jener im Uploadtool
+    entspricht.\grqq\vspace{4\baselineskip}
+
+  \noindent \@place, \today\hspace{0.4\linewidth}Unterschrift
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die deutsche Kurzfassung und an den unteren Rand der Seite die deutschen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}  
+\ifx\@kurzfassung\@empty
+	\ifx\@schlagworte\@empty
+	\else\clearpage\null\vfill\paragraph*{Schlagworte:}\@schlagworte
+	\fi
+\else\clearpage
+	\chapter*{Kurzfassung}
+	\@kurzfassung
+	\ifx\@schlagworte\@empty
+	\else\vfill\paragraph*{Schlagworte:}\@schlagworte
+	\fi
+\fi
+
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die englische Kurzfassung und an den unteren Rand der Seite die englischen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}
+\ifx\@outline\@empty
+	\ifx\@keywords\@empty
+	\else\clearpage\null\vfill\paragraph*{Keywords:}\@keywords
+	\fi
+\else\clearpage
+	\chapter*{Abstract}
+	\@outline
+	\ifx\@keywords\@empty
+	\else\vfill\paragraph*{Keywords:}\@keywords
+	\fi
+\fi
+
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die Danksagung gesetzt. Wird dieser Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.	
+%
+%    \begin{macrocode}
+\ifx\@acknowledgements\@empty
+\else\clearpage
+	\chapter*{Danksagung}\@acknowledgements
+\fi
+
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird automatisch das Inhaltsverzeichnis ausgegeben. Das Layout des Inhaltsverzeichnisses (bis zu welcher Tiefe Kapitel aufgenommen werden, Schriftart ect.) wird hier festgelegt. Die Sprache wird auf die eingestellte Sprachoption geändert
+%
+%    \begin{macrocode}
+\clearpage
+\tableofcontents
+
+    \clearpage
+    \setcounter{page}{1}}{
+
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\ifstr{\doctype}{MASTERARBEIT}{
+  \chapter*{Eidesstattliche Erkl{\"a}rung}
+    \glqq Ich, als Autor / als Autorin und Urheber / Urheberin der
+    vorliegenden Arbeit, best{\"a}tige mit meiner Unterschrift die
+    Kenntnisnahme der einschl{\"a}gigen urheber- und hochschulrechtlichen
+    Bestimmungen (vgl. Urheberrechtsgesetz idgF sowie Satzungsteil
+    Studienrechtliche Bestimmungen / Pr{\"u}fungsordnung der FH Technikum
+    Wien idgF).\\[\baselineskip]
+    Ich erkl{\"a}re hiermit, dass ich die vorliegende Arbeit selbst{\"a}ndig
+    angefertigt und Gedankengut jeglicher Art aus fremden sowie
+    selbst verfassten Quellen zur G{\"a}nze zitiert habe. Ich bin mir
+    bei Nachweis fehlender Eigen- und Selbstst{\"a}ndigkeit sowie dem
+    Nachweis eines Vorsatzes zur Erschleichung einer positiven
+    Beurteilung dieser Arbeit der Konsequenzen bewusst, die von der
+    Studiengangsleitung ausgesprochen werden k{\"o}nnen (vgl. Satzungsteil
+    Studienrechtliche Bestimmungen / Pr{\"u}fungsordnung der FH Technikum
+    Wien idgF).\\[\baselineskip]
+    Weiters best{\"a}tige ich, dass ich die vorliegende Arbeit bis dato
+    nicht ver{\"o}ffentlicht und weder in gleicher noch in {\"a}hnlicher
+    Form einer anderen Pr{\"u}fungsbeh{\"o}rde vorgelegt habe. Ich versichere,
+    dass die abgegebene Version jener im Uploadtool
+    entspricht.\grqq\vspace{4\baselineskip}
+
+  \noindent \@place, \today\hspace{0.4\linewidth}Unterschrift
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die deutsche Kurzfassung und an den unteren Rand der Seite die deutschen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}  
+\ifx\@kurzfassung\@empty
+  \ifx\@schlagworte\@empty
+  \else\clearpage\null\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\else\clearpage
+  \chapter*{Kurzfassung}
+  \@kurzfassung
+  \ifx\@schlagworte\@empty
+  \else\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die englische Kurzfassung und an den unteren Rand der Seite die englischen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}
+\ifx\@outline\@empty
+  \ifx\@keywords\@empty
+  \else\clearpage\null\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\else\clearpage
+  \chapter*{Abstract}
+  \@outline
+  \ifx\@keywords\@empty
+  \else\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die Danksagung gesetzt. Wird dieser Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.	
+%
+%    \begin{macrocode}
+\ifx\@acknowledgements\@empty
+\else\clearpage
+  \chapter*{Danksagung}\@acknowledgements
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird automatisch das Inhaltsverzeichnis ausgegeben. Das Layout des Inhaltsverzeichnisses (bis zu welcher Tiefe Kapitel aufgenommen werden, Schriftart ect.) wird hier festgelegt. Die Sprache wird auf die eingestellte Sprachoption geändert
+%	
+%    \begin{macrocode}
+\clearpage
+\tableofcontents
+
+    \clearpage
+    \setcounter{page}{1}}{
+
+%    \end{macrocode}
+  
+%    \begin{macrocode}
+\ifstr{\doctype}{BACHELORTHESIS}{
+  \chapter*{Declaration}
+    ``As author and creator of this work to hand, I confirm with my
+    signature knowledge of the relevant copyright regulations
+    governed by higher education acts (see  Urheberrechtsgesetz
+    /Austrian copyright law as amended as well as the Statute on
+    Studies Act Provisions / Examination Regulations of the UAS
+    Technikum Wien as amended).\\[\baselineskip]
+    I hereby declare that I completed the present work independently
+    and that any ideas, whether written by others or by myself, have
+    been fully sourced and referenced. I am aware of any consequences
+    I may face on the part of the degree program director if there
+    should be evidence of missing autonomy and independence or
+    evidence of any intent to fraudulently achieve a pass mark for
+    this work (see Statute on Studies Act Provisions / Examination
+    Regulations of the UAS Technikum Wien as amended).\\[\baselineskip]
+    I further declare that up to this date I have not published the work to
+    hand nor have I presented it to another examination board in the same or
+    similar form. I affirm that the version submitted matches the version in
+    the upload tool.``\vspace{4\baselineskip}
+
+  \noindent \@place, \today\hspace{0.4\linewidth}Signature
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die deutsche Kurzfassung und an den unteren Rand der Seite die deutschen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}  
+\ifx\@kurzfassung\@empty
+  \ifx\@schlagworte\@empty
+  \else\clearpage\null\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\else\clearpage
+  \chapter*{Kurzfassung}
+  \@kurzfassung
+  \ifx\@schlagworte\@empty
+  \else\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die englische Kurzfassung und an den unteren Rand der Seite die englischen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}
+\ifx\@outline\@empty
+  \ifx\@keywords\@empty
+  \else\clearpage\null\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\else\clearpage
+  \chapter*{Abstract}
+  \@outline
+  \ifx\@keywords\@empty
+  \else\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die Danksagung gesetzt. Wird dieser Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.	
+%
+%    \begin{macrocode}
+\ifx\@acknowledgements\@empty
+\else\clearpage
+  \chapter*{Acknowledgements}\@acknowledgements
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird automatisch das Inhaltsverzeichnis ausgegeben. Das Layout des Inhaltsverzeichnisses (bis zu welcher Tiefe Kapitel aufgenommen werden, Schriftart ect.) wird hier festgelegt. Die Sprache wird auf die eingestellte Sprachoption geändert
+%	
+%    \begin{macrocode}
+\clearpage
+\tableofcontents
+
+    \clearpage
+    \setcounter{page}{1}}{
+
+%    \end{macrocode}
+
+%    \begin{macrocode}
+\ifstr{\doctype}{MASTERTHESIS}{
+  \chapter*{Declaration}
+    ``As author and creator of this work to hand, I confirm with my
+    signature knowledge of the relevant copyright regulations
+    governed by higher education acts (see  Urheberrechtsgesetz
+    /Austrian copyright law as amended as well as the Statute on
+    Studies Act Provisions / Examination Regulations of the UAS
+    Technikum Wien as amended).\\[\baselineskip]
+    I hereby declare that I completed the present work independently
+    and that any ideas, whether written by others or by myself, have
+    been fully sourced and referenced. I am aware of any consequences
+    I may face on the part of the degree program director if there
+    should be evidence of missing autonomy and independence or
+    evidence of any intent to fraudulently achieve a pass mark for
+    this work (see Statute on Studies Act Provisions / Examination
+    Regulations of the UAS Technikum Wien as amended).\\[\baselineskip]
+    I further declare that up to this date I have not published the work to
+    hand nor have I presented it to another examination board in the same or
+    similar form. I affirm that the version submitted matches the version in
+    the upload tool.``\vspace{4\baselineskip}
+
+  \noindent \@place, \today\hspace{0.4\linewidth}Signature
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die deutsche Kurzfassung und an den unteren Rand der Seite die deutschen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}  
+  \ifx\@kurzfassung\@empty
+  \ifx\@schlagworte\@empty
+  \else\clearpage\null\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\else\clearpage
+  \chapter*{Kurzfassung}
+  \@kurzfassung
+  \ifx\@schlagworte\@empty
+  \else\vfill\paragraph*{Schlagworte:}\@schlagworte
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die englische Kurzfassung und an den unteren Rand der Seite die englischen Schlagworte gesetzt. Wird einer der beiden Parameter nicht definiert, so verbleibt der Platz leer. Werden beide Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.
+%
+%    \begin{macrocode}
+\ifx\@outline\@empty
+  \ifx\@keywords\@empty
+  \else\clearpage\null\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\else\clearpage
+  \chapter*{Abstract}
+  \@outline
+  \ifx\@keywords\@empty
+  \else\vfill\paragraph*{Keywords:}\@keywords
+  \fi
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird (so sie definiert wurde) die Danksagung gesetzt. Wird dieser Parameter nicht definiert, so würde eine leere Seite entstehen. Diese wird automatisch aus dem Dokument gelöscht.	
+%
+%    \begin{macrocode}
+\ifx\@acknowledgements\@empty
+\else\clearpage
+  \chapter*{Acknowledgements}\@acknowledgements
+\fi
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird automatisch das Inhaltsverzeichnis ausgegeben. Das Layout des Inhaltsverzeichnisses (bis zu welcher Tiefe Kapitel aufgenommen werden, Schriftart ect.) wird hier festgelegt. Die Sprache wird auf die eingestellte Sprachoption geändert
+%	
+%    \begin{macrocode}
+\clearpage
+\tableofcontents
+
+    \clearpage
+    \setcounter{page}{1}}{
+	
+%    \end{macrocode}
+%
+% Nach einem Seitenumbruch wird automatisch das Inhaltsverzeichnis ausgegeben. Das Layout des Inhaltsverzeichnisses (bis zu welcher Tiefe Kapitel aufgenommen werden, Schriftart ect.) wird hier festgelegt. Die Sprache wird auf die eingestellte Sprachoption geändert
+%	
+%    \begin{macrocode}
+\clearpage
+\tableofcontents
+
+    \clearpage
+    \setcounter{page}{1}}}}}}
+  \end{titlepage}
+ }
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{Aufzählungszeichen}
+% Das Layout der Aufzählungen bei Studiengangsdokumenten wird den Vorgaben der Corporate Identity angepasst. Bei definiertem Dokomententyp wird der (aktuell leere) Alternativcode ausgeführt.
+%
+%    \begin{macrocode}
+\ifstr{\doctype}{}
+{
+  \renewcommand*{\labelitemi}{
+    \huge\raisebox{0.2ex}{$\centerdot$}\hspace{-5pt}}
+  \renewcommand*{\labelitemii}{
+    \huge\raisebox{-0.15ex}{-}\hspace{-5pt}}
+  \renewcommand*{\labelitemiii}{
+    \LARGE\raisebox{0.3ex}{$\centerdot$}\hspace{-5pt}}
+}{}
+%    \end{macrocode}
+% \end{macro}
+%
+% 
+% \clearpage
+% \section{Versionskontrolle}
+% \noindent twbook.dtx\
+% Version: 0.9\\
+% \today, \thistime\\
+%% Verfasser der Änderung: Otrebski
+% \section{Bezüglich des nachfolgenden Index}
+% 
+% Im Index auf der nächsten Seite sind alle neuen Befehle gelistet. Die nachstehenden Ziffernangaben beziehen sich auf die Codezeilen im Quellcode, in denen die Befehle Verwendung finden.
+%
+% \StopEventually{\PrintChanges\PrintIndex}
+% 
+% \Finale
+\endinput	
