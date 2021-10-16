@@ -10,6 +10,7 @@ import pickle
 import bcolz as bcolz
 from collections import defaultdict
 import hashlib
+import os
 
 glove_path = 'embedding_data'
 
@@ -44,9 +45,19 @@ class keydefaultdict(defaultdict):
 
 
 def load_word_vec_dict():
+    if not os.path.isfile(f'{glove_path}/glove.6B.50d.txt'):
+        print('\nFailed to find word embedding data!')
+        print('Please download "glove.6B.50d.txt" at "https://nlp.stanford.edu/projects/glove/"!\n')
+
+    print('Checking for ".pkl" embedding files...')
+    if not os.path.isfile(f'{glove_path}/6B.50_words.pkl') or not os.path.isfile(f'{glove_path}/6B.50_idx.pkl'):
+        print('Embedding data of type ".pkl" not found! Loading files from raw ".txt" files...')
+        convert_txt_to_pkl_files()
+
     # Using those objects we can now create a dictionary that given a word returns its vector.
     vectors = bcolz.open(f'{glove_path}/6B.50.dat')[:]
     vectors = [torch.from_numpy(v.reshape(1, -1)).to(torch.float32) for v in vectors]
+
     words = pickle.load(open(f'{glove_path}/6B.50_words.pkl', 'rb'))
     word2idx = pickle.load(open(f'{glove_path}/6B.50_idx.pkl', 'rb'))
     glove = {w: vectors[word2idx[w]] for w in words}
