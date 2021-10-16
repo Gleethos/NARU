@@ -2,11 +2,11 @@ import os.path
 
 from lib.embedding import Encoder
 import torch
-from lib.ffnaru import Network
+from lib.model.ffnaru import Network
 from lib.data_loader import load_jokes
 from lib.trainer import exec_trial_with_autograd
 from lib.persistence import save_params
-from lib.model.classes import CONTEXT
+from lib.model.comps.classes import CONTEXT
 import time
 
 # ---------------------------------------------------------------------

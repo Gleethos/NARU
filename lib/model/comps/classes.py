@@ -3,8 +3,8 @@ import threading
 from collections import defaultdict
 
 import torch
-from lib.model.fun import sig
-from lib.model.fun import activation
+from lib.model.comps.fun import sig
+from lib.model.comps.fun import activation
 
 CONTEXT = threading.local()
 CONTEXT.recorders = []
