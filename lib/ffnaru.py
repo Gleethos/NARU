@@ -1,7 +1,7 @@
 
-from utility.classes import Bundle
-from utility.classes import Loss
-from utility.classes import CONTEXT
+from lib.model.classes import Bundle
+from lib.model.classes import Loss
+from lib.model.classes import CONTEXT
 import math
 import torch
 
@@ -72,7 +72,7 @@ class Capsule:
 # -------------------------------------------------------------------------------------------------------------------- #
 # Network
 
-from utility.classes import activation
+from lib.model.classes import activation
 
 class Network:
 

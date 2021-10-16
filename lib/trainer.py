@@ -1,7 +1,7 @@
 
 import torch
 import random
-from utility.net_analysis import load_and_plot, avg_saturation
+from lib.net_analysis import load_and_plot, avg_saturation
 
 import collections
 import os
