@@ -129,7 +129,8 @@ def test_with_autograd_on_dummy_data():
             optimizer=optimizer,
             training_data=data[:],
             test_data=data[:],
-            epochs=300
+            epochs=300,
+            make_plots=False
         )
         print(choice_matrices)
 
@@ -142,7 +143,7 @@ def test_with_autograd_on_dummy_data():
     pred = model.pred(encoder.sequence_words_in(data[1]))
     print('\n'.join([str(p.tolist()) for p in pred]))
     print('FFNN-NARU TEST DONE!')
-
+    print([x.tolist() for x in pred])
     assert [x.tolist() for x in pred] == [[[-0.549000084400177, 0.004812427330762148]], [[-1.4216820001602173, -0.7151510715484619]], [[-0.4429708421230316, 0.6963500380516052]], [[0.9589303135871887, 1.2523036003112793]], [[0.9961433410644531, -0.9890313744544983]], [[-0.992278516292572, -0.9388411045074463]]]
     for s in data:
         test_sentence = encoder.sequence_words_in(s)
@@ -152,4 +153,6 @@ def test_with_autograd_on_dummy_data():
 print(os.path.dirname('p'))
 
 #test_with_autograd_on_jokes()
-test_with_autograd_on_dummy_data()
+#test_with_autograd_on_dummy_data()
+
+import lib

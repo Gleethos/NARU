@@ -26,7 +26,9 @@ def exec_trial_with_autograd(
         epochs=10,
         batch_size=None,
         do_ini_full_batch=True,
-        path='models/'
+        path='models/',
+        make_plots=True,
+        print_epochs=True
 ):
     assert epochs > 0
 
@@ -70,6 +72,8 @@ def exec_trial_with_autograd(
         initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
         print('Initial full batch training step done!\n...')
 
+    print('Looping through epochs now...')
+
     for epoch in range(epochs):
 
         sample_losses = []
@@ -84,8 +88,8 @@ def exec_trial_with_autograd(
         tame_gradients(weights=model.get_params(), accumulation_count=batch_size)
         optimizer.step()
         optimizer.zero_grad()
-
-        print('Epoch', epoch, ' done! latest loss =', sample_losses[len(sample_losses) - 1],'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
+        if print_epochs:
+            print('Epoch', epoch, ' done! latest loss =', sample_losses[len(sample_losses) - 1],'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
         epoch_losses.append(sum(sample_losses)/len(sample_losses))
 
         # If we have previous choices we count the changes! This gives useful insight into the model!
@@ -135,8 +139,8 @@ def exec_trial_with_autograd(
         fout.close()
 
     # done saving data!
-
-    load_and_plot(data_path=data_path, plot_path=plot_path)
+    if make_plots:
+        load_and_plot(data_path=data_path, plot_path=plot_path)
 
     return choice_matrices
 
