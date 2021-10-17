@@ -72,7 +72,7 @@ def test_with_autograd_on_dummy_data():
             make_plots=False,
             print_epochs=False
         )
-        print(choice_matrices)
+        #print(choice_matrices)
 
     # a : [-4,  2,  3]
     # b : [-1, -6,  4]
@@ -99,3 +99,5 @@ def test_with_autograd_on_dummy_data():
 
 
 test_with_autograd_on_dummy_data()
+print('\nNaru main package successfully loaded!')
+print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
