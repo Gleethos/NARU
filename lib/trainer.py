@@ -76,11 +76,13 @@ def exec_trial_with_autograd(
 
     for epoch in range(epochs):
 
+        last_losses = []
         sample_losses = []
-        batch = list(training_data)[:batch_size]
+        batch = list(training_data)[:batch_size] # Note: we "rotate" the training data after each batch further below!
         for sentence in batch:
             vectors = encoder.sequence_words_in(sentence)
             choice_matrix, losses = model.train_with_autograd_on(vectors)
+            last_losses.append(losses[len(losses)-1])
             sample_losses.append(sum(losses) / len(losses))
             choice_matrices[' '.join(sentence)] = choice_matrix
 
@@ -89,7 +91,7 @@ def exec_trial_with_autograd(
         optimizer.step()
         optimizer.zero_grad()
         if print_epochs:
-            print('Epoch', epoch, ' done! latest loss =', sample_losses[len(sample_losses) - 1],'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
+            print('Epoch', epoch, ' done! latest token loss avg =', sum(last_losses)/len(last_losses),'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
         epoch_losses.append(sum(sample_losses)/len(sample_losses))
 
         # If we have previous choices we count the changes! This gives useful insight into the model!

@@ -1,7 +1,6 @@
 
 import torch
 from lib.model.comps.fun import sig, activation
-from lib.model.comps import CONTEXT
 from lib.model.comps import Moment
 
 
@@ -40,42 +39,13 @@ class Route:
         m = Moment()
         g = ( r @ self.Wgr + h @ self.Wgh ) / 2
         m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
-        g = sig(g)
+        g = sig(g+2)
         if not 0 <= g <= 1: print('Illegal gate:', g)
         assert 0 <= g <= 1  # Sigmoid should be within bounds!
         m.g = g.mean().item()  # g is used for routing! Largest gate wins!
         m.z = r @ self.Wr # z is saved for back-prop.
         rec[self] = m
         return g * m.z # Returning vector "c", the gated connection vector!
-
-
-
-print('Route loaded! Unit-Testing now...')
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# TESTING:
-
-torch.manual_seed(66642999)
-CONTEXT.recorders = []
-
-route = Route(D_in=3, D_out=2)
-
-assert len(CONTEXT.recorders) == 0
-#assert CONTEXT.recorders[0] == route
-
-r, h = torch.ones(1, 3), torch.ones(1, 2)
-
-rec = dict()
-
-c = route.forward(h, r, rec)
-
-assert str(c) == 'tensor([[ 0.2006, -0.0495]])'
-
-del route, r, h#, c, g_r, g_h
-CONTEXT.recorders = []
-print('Route Unit-Testing successful!')
-
-#---
-
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # ROUTE
@@ -129,11 +99,12 @@ class DeepRoute:
         self.Wgh.grad  = grad6
 
     def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
+
         m = Moment()
         r0, h0 = activation(r @ self.Wgr0), activation(h @ self.Wgh0)
         g = ( r0 @ self.Wgr + h0 @ self.Wgh ) / 2
         m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
-        g = sig(g)
+        g = sig(g+2)
         if not 0 <= g <= 1: print('Illegal gate:', g)
         assert 0 <= g <= 1  # Sigmoid should be within bounds!
         m.g = g.mean().item()  # g is used for routing! Largest gate wins!

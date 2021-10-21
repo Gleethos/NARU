@@ -1,12 +1,14 @@
 import os.path
 
-from lib.embedding import Encoder
 import torch
+
+from lib.embedding import Encoder
 from lib.model.ffnaru import Network
 from lib.data_loader import load_jokes
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
 from lib.model.comps import CONTEXT
+from lib.model.comps.connections import Route, DeepRoute
 import time
 
 # ---------------------------------------------------------------------
@@ -103,7 +105,9 @@ class TestEncoder:
 
 
 def test_with_autograd_on_dummy_data():
+    torch.manual_seed(66642999)
     CONTEXT.BPTT_limit = 10  # 10
+    CONTEXT.routeClass = Route#DeepRoute
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,
@@ -130,7 +134,7 @@ def test_with_autograd_on_dummy_data():
             training_data=data[:],
             test_data=data[:],
             epochs=300,
-            make_plots=False
+            make_plots=True
         )
         print(choice_matrices)
 
@@ -144,15 +148,11 @@ def test_with_autograd_on_dummy_data():
     print('\n'.join([str(p.tolist()) for p in pred]))
     print('FFNN-NARU TEST DONE!')
     print([x.tolist() for x in pred])
-    assert [x.tolist() for x in pred] == [[[-0.549000084400177, 0.004812427330762148]], [[-1.4216820001602173, -0.7151510715484619]], [[-0.4429708421230316, 0.6963500380516052]], [[0.9589303135871887, 1.2523036003112793]], [[0.9961433410644531, -0.9890313744544983]], [[-0.992278516292572, -0.9388411045074463]]]
+
     for s in data:
         test_sentence = encoder.sequence_words_in(s)
         preds = model.pred(test_sentence)
         print(' '.join(s),':',' '.join(encoder.sequence_vecs_in(preds)))
 
-print(os.path.dirname('p'))
-
 #test_with_autograd_on_jokes()
-#test_with_autograd_on_dummy_data()
-
-import lib
+test_with_autograd_on_dummy_data()
