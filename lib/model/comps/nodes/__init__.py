@@ -1,7 +1,6 @@
 
 from lib.model.comps import Moment, Recorder, CONTEXT
 from lib.model.comps.fun import activation
-from lib.model.comps.connections import Route
 import torch
 
 
@@ -85,11 +84,11 @@ class Bundle(Recorder):
             target_group = next_groups[target_index]
             self.targets.append(target_index)
             assert target_group.index == target_index
-            self.to_conns[target_group] = Route(D_in=target_group.dimensionality, D_out=self.dimensionality)
+            self.to_conns[target_group] = CONTEXT.routeClass(D_in=target_group.dimensionality, D_out=self.dimensionality)
             target_group.register_source(self)
 
     def register_source(self, origin_group):
-        self.from_conns[origin_group] = Route(D_in=origin_group.dimensionality, D_out=self.dimensionality)
+        self.from_conns[origin_group] = CONTEXT.routeClass(D_in=origin_group.dimensionality, D_out=self.dimensionality)
 
     def number_of_connections(self):
         count = len(self.from_conns) + len(self.to_conns)
