@@ -2,12 +2,12 @@
 import threading
 from collections import defaultdict
 
-import lib.model.comps.connections
+#import lib.model.comps.connections
 
 CONTEXT = threading.local()
 CONTEXT.recorders = []
 CONTEXT.BPTT_limit = 10
-CONTEXT.routeClass = lib.model.comps.connections.Route
+CONTEXT.routeClass = "Not yet set!"#lib.model.comps.connections.Route
 
 # ----------------------------------------------------------------------------------------------------------------------#
 # HISTORY BASE CLASS
