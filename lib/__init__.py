@@ -6,7 +6,7 @@ from lib.model.ffnaru import Network
 from lib.data_loader import load_jokes
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
-from lib.model.comps.classes import CONTEXT
+from lib.model.comps import CONTEXT
 
 # ---------------------------------------------------------------------
 

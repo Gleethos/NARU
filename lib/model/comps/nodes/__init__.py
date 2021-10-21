@@ -1,137 +1,12 @@
 
-import threading
-from collections import defaultdict
-
-import torch
-from lib.model.comps.fun import sig
+from lib.model.comps import Moment, Recorder, CONTEXT
 from lib.model.comps.fun import activation
-
-CONTEXT = threading.local()
-CONTEXT.recorders = []
-CONTEXT.BPTT_limit = 10
-
-torch.manual_seed(666)
-
-# ----------------------------------------------------------------------------------------------------------------------#
-# HISTORY BASE CLASS
-
-
-# Moments are responsible for holding variables needed for propagating back through time.
-class Moment:
-    def __init__(self):
-        self.is_record = False # Moments can be records or "on the fly creations" provided by the defaultdict...
-    pass
-
-
-class Recorder:
-    def __init__(self, default_lambda):
-        self.default_lambda = default_lambda
-        self.history: dict = None  # history
-        self.reset()
-        CONTEXT.recorders.append(self)
-        self.time_restrictions : list = None
-
-    def reset(self): self.history: dict = defaultdict(self.default_lambda)  # history
-
-    def latest(self, time: int):
-        if self.time_restrictions is not None: assert time in self.time_restrictions
-        moment = self.history[time]
-        is_record = moment.is_record
-        while not is_record:
-            time -= 1
-            moment = self.history[time]
-            is_record = moment.is_record
-            if time < 0: # first time step is recorded by default!
-                self.history[-1] = self.history[-1]
-                self.history[-1].is_record = True
-                return self.history[-1]
-
-        return self.history[time]
-
-    def at(self, time:int):
-        if self.time_restrictions is not None: assert time in self.time_restrictions
-        return self.history[time]
-
-    def rec(self, time: int):
-        if self.time_restrictions is not None: assert time in self.time_restrictions
-        if not self.history[time].is_record:
-            self.history[time] = self.history[time]
-            self.history[time].time = time
-        self.history[time].is_record = True
-        return self.history[time]
-
-
-# -------------------------------------------------------------------------------------------------------------------- #
-# ROUTE
-
-class Route:
-
-    def __init__(self, D_in=10, D_out=10):
-        D_h = D_out
-        self.Wr = torch.randn(D_in, D_out)
-        self.Wr.grad = torch.zeros(D_in, D_out)
-
-        self.Wgh = torch.randn(D_h, 1)
-        self.Wgh.grad = torch.zeros(D_h, 1)
-
-        self.Wgr = torch.randn(D_in, 1)
-        self.Wgr.grad = torch.zeros(D_in, 1)
-        self.pd_g: torch.Tensor = None  # the partial derivative of g
-
-    def get_params(self): return [self.Wr, self.Wgr, self.Wgh]
-
-    def set_params(self, params):
-        grad1, grad2, grad3 = self.Wr.grad, self.Wgr.grad, self.Wgh.grad
-        self.Wr  *= 0
-        self.Wgr *= 0
-        self.Wgh *= 0
-        self.Wr  += params.pop(0)
-        self.Wgr += params.pop(0)
-        self.Wgh += params.pop(0)
-        self.Wr.grad = grad1
-        self.Wgr.grad = grad2
-        self.Wgh.grad = grad3
-
-    def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
-        m = Moment()
-        g = ( r @ self.Wgr + h @ self.Wgh ) / 2
-        m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
-        g = sig(g)
-        if not 0 <= g <= 1: print('Illegal gate:', g)
-        assert 0 <= g <= 1  # Sigmoid should be within bounds!
-        m.g = g.mean().item()  # g is used for routing! Largest gate wins!
-        m.z = r @ self.Wr # z is saved for back-prop.
-        rec[self] = m
-        return g * m.z # Returning vector "c", the gated connection vector!
-
-
-
-print('Route loaded! Unit-Testing now...')
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# TESTING:
-
-torch.manual_seed(66642999)
-
-route = Route(D_in=3, D_out=2)
-
-assert len(CONTEXT.recorders) == 0
-#assert CONTEXT.recorders[0] == route
-
-r, h = torch.ones(1, 3), torch.ones(1, 2)
-
-rec = dict()
-
-c = route.forward(h, r, rec)
-
-assert str(c) == 'tensor([[ 0.2006, -0.0495]])'
-
-del route, r, h#, c, g_r, g_h
-CONTEXT.recorders = []
-print('Route Unit-Testing successful!')
+from lib.model.comps.connections import Route
+import torch
 
 
 # ----------------------------------------------------------------------------------------------------------------------#
-# GROUP
+# Bundle
 
 # A moment holds information about a concrete point in time step t!
 # This is important for back-propagation
@@ -164,7 +39,8 @@ class Bundle(Recorder):
             self.bias = None
 
     def nid(self):
-        return 'p'+str(self.position)+'i'+str(self.index)+'f'+str(len(self.from_conns))+'t'+str(len(self.to_conns))+'d'+str(self.dimensionality)
+        return 'p' + str(self.position) + 'i' + str(self.index) + 'f' + str(len(self.from_conns)) + 't' + str(
+            len(self.to_conns)) + 'd' + str(self.dimensionality)
 
     # IO :
 
@@ -178,7 +54,7 @@ class Bundle(Recorder):
             assert state_is_all_zero and moment.is_sleeping or not moment.is_sleeping
         else:
             moment.error = moment.error + e
-            moment.error_count = moment.error_count + 1 #-> incrementing the counter! (for normalization)
+            moment.error_count = moment.error_count + 1  # -> incrementing the counter! (for normalization)
 
     def get_params(self):
         params = []
@@ -192,11 +68,11 @@ class Bundle(Recorder):
         for node, source in self.from_conns.items(): source.set_params(params)
 
     def str(self, level: str):
-        return level + 'Bundle ' + str(self.index)+ ' : {' + \
-                       ' sources: ' + str(len(self.from_conns)) + ',' + \
-                       ' routes: ' + str(len(self.to_conns)) + ',' + \
-                       ' dimensionality: ' + str(self.dimensionality) + ', ' + \
-                       ' targets: ' + str(self.targets) + ' };\n'
+        return level + 'Bundle ' + str(self.index) + ' : {' + \
+               ' sources: ' + str(len(self.from_conns)) + ',' + \
+               ' routes: ' + str(len(self.to_conns)) + ',' + \
+               ' dimensionality: ' + str(self.dimensionality) + ', ' + \
+               ' targets: ' + str(self.targets) + ' };\n'
 
     # Construction :
 
@@ -238,7 +114,7 @@ class Bundle(Recorder):
 
         if not current_moment.is_sleeping:
 
-            #print('Awake:', self.nid(), '-', time)
+            # print('Awake:', self.nid(), '-', time)
             current_moment.message = 'Was active!'
             z = None
             if this_is_start:
@@ -248,18 +124,22 @@ class Bundle(Recorder):
             # Source activations :
             for group, source in self.from_conns.items():
                 h, r = self.latest(time - 1).state, group.latest(time - 1).state
-                #print('Forward-Src:',self.nid()+' - t'+str(time),': h='+str(h),'r='+str(r))
-                if z is None: z = source.forward(h, r, rec=current_moment.conns)
-                else: z = z + source.forward(h, r, rec=current_moment.conns)
+                # print('Forward-Src:',self.nid()+' - t'+str(time),': h='+str(h),'r='+str(r))
+                if z is None:
+                    z = source.forward(h, r, rec=current_moment.conns)
+                else:
+                    z = z + source.forward(h, r, rec=current_moment.conns)
 
             # Route activations :
             best_target: Bundle = None
             best_score: float = -1
             for group, route in self.to_conns.items():
-                h, r = self.latest(time-1).state, group.latest(time-1).state
-                #print('Forward-Rte:',self.nid()+' - t'+str(time),': h='+str(h),'r='+str(r))
-                if z is None: z = route.forward(h, r, rec=current_moment.conns)
-                else: z = z + route.forward(h, r, rec=current_moment.conns)
+                h, r = self.latest(time - 1).state, group.latest(time - 1).state
+                # print('Forward-Rte:',self.nid()+' - t'+str(time),': h='+str(h),'r='+str(r))
+                if z is None:
+                    z = route.forward(h, r, rec=current_moment.conns)
+                else:
+                    z = z + route.forward(h, r, rec=current_moment.conns)
 
                 # Checking if this route is better than another :
                 g = current_moment.conns[route].g
@@ -272,9 +152,9 @@ class Bundle(Recorder):
                 assert best_target is not None  # There has to be a choice!
 
                 # We activate the best group of neurons :
-                best_target.rec(time+1).is_sleeping = False  # wake up!
-                best_target.rec(time+1).message = 'Just woke up!'
-                #print('Chose:',best_target.position, best_target.index, ', at ', self.position, self.index)
+                best_target.rec(time + 1).is_sleeping = False  # wake up!
+                best_target.rec(time + 1).message = 'Just woke up!'
+                # print('Chose:',best_target.position, best_target.index, ', at ', self.position, self.index)
                 # No we save the next neuron group which ought to be activated :
 
             assert z is not None
@@ -287,12 +167,12 @@ class Bundle(Recorder):
                 current_moment.derivative = (z * 0 + 1) / number_of_connections
             elif this_is_end:
                 current_moment.state = z  # If this is not the end of the network... : No activation!!
-                current_moment.derivative = 1 / number_of_connections # The derivative is simple because no function...
+                current_moment.derivative = 1 / number_of_connections  # The derivative is simple because no function...
             else:
                 current_moment.state = activation(x=z)  # If this is not the start of the network... : Activate!
-                #current_moment.derivative = activation(x=z, derive=True) / number_of_connections
+                # current_moment.derivative = activation(x=z, derive=True) / number_of_connections
 
-            #print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
+            # print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
 
             return True, best_target  # The best group is being returned!
         return False, None
@@ -307,7 +187,7 @@ torch.manual_seed(66642999)
 
 def test_simple_net(group, other1, other2, output):
     # connecting them...
-    group.connect_forward(next_groups=[other1,other2], cone_size=293943, step=1)
+    group.connect_forward(next_groups=[other1, other2], cone_size=293943, step=1)
     other1.connect_forward(next_groups=[output], cone_size=123, step=1)
     other2.connect_forward(next_groups=[output], cone_size=123, step=1)
 
@@ -319,49 +199,48 @@ def test_simple_net(group, other1, other2, output):
     assert len(other2.to_conns) == 1
     assert len(output.from_conns) == 2
     assert len(output.to_conns) == 0
-#    assert len(CONTEXT.recorders) == 4 + 2 + 2 + 2 + 2 # four groups and 6 connections
+    #    assert len(CONTEXT.recorders) == 4 + 2 + 2 + 2 + 2 # four groups and 6 connections
 
-    #group.rec(-1).state = torch.tensor([[1.0, 2.0, 3.0]])
+    # group.rec(-1).state = torch.tensor([[1.0, 2.0, 3.0]])
     group.start_with(time=0, x=torch.tensor([[1.0, 2.0, 3.0]]))
     groups = [group, other1, other2, output]
     for g in groups: g.forward(0)
 
-    assert not other1.latest(1).is_sleeping # CHOICE: other1
+    assert not other1.latest(1).is_sleeping  # CHOICE: other1
     assert other2.latest(1).is_sleeping
     assert output.latest(1).is_sleeping
-    #assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
+    # assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
     # Future states don't know anything:
     assert other1.at(2).is_sleeping
     assert other2.at(2).is_sleeping
     assert output.at(2).is_sleeping
 
-    #group.rec(0).state = torch.tensor([[-3.0, -1.0, -4.0]])
+    # group.rec(0).state = torch.tensor([[-3.0, -1.0, -4.0]])
     group.start_with(time=1, x=torch.tensor([[-3.0, -1.0, -4.0]]))
     for g in groups: g.forward(1)
 
-    assert not other1.at(1).is_sleeping # first step is still recorded...
+    assert not other1.at(1).is_sleeping  # first step is still recorded...
     assert other2.at(1).is_sleeping
-    #assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
+    # assert [r.latest(0).g for r in group.to_conns.values()] == [0.10948651283979416, 0.0009388707112520933]
 
-    #print([r.latest(1).g for r in group.to_conns.values()])
-    assert not other1.at(2).is_sleeping # New step as well!
-    assert other2.at(2).is_sleeping # CHOICE: other2
+    # print([r.latest(1).g for r in group.to_conns.values()])
+    assert not other1.at(2).is_sleeping  # New step as well!
+    assert other2.at(2).is_sleeping  # CHOICE: other2
     assert not output.at(2).is_sleeping
-    #assert [r.latest(1).g for r in group.to_conns.values()] == [0.881648063659668, 0.9996621608734131]
-    #assert [r.latest(1).g for r in other1.to_conns.values()] == [0.5]
+    # assert [r.latest(1).g for r in group.to_conns.values()] == [0.881648063659668, 0.9996621608734131]
+    # assert [r.latest(1).g for r in other1.to_conns.values()] == [0.5]
 
-    #last activation (activates output)
+    # last activation (activates output)
     group.rec(1).state = torch.tensor([[2.0, 4.0, -1.0]])
     for g in groups: g.forward(2)
     for g in groups: assert g.latest(0).error_count == 0
     print(str(output.at(2).state))
-    #assert str(output.at(2).state) == 'tensor([[1.2334]])'#'tensor([[0.9552]])'#'tensor([[5.1944]])'#'tensor([[-0.2231]])'
-    output.add_error(torch.tensor([[1]]),2)
+    # assert str(output.at(2).state) == 'tensor([[1.2334]])'#'tensor([[0.9552]])'#'tensor([[5.1944]])'#'tensor([[-0.2231]])'
+    output.add_error(torch.tensor([[1]]), 2)
     assert output.latest(1).error_count == 0
     assert output.latest(2).error_count == 1
     assert output.latest(3).error_count == 0
- 
 
 
 group = Bundle(index=0, dimensionality=3)
@@ -380,7 +259,7 @@ other2 = Bundle(index=1, dimensionality=3)
 output = Bundle(index=0, dimensionality=1)
 
 test_simple_net(group, other1, other2, output)
-for r in CONTEXT.recorders: r.reset() # Resetting allows for a repeat of the test!
+for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the test!
 test_simple_net(group, other1, other2, output)
 
 del group, other1, other2, output
@@ -390,23 +269,4 @@ print('Bundle Unit-Testing successful!')
 print('==============================\n')
 
 # -----------------------------------------
-
-
-class Loss:
-
-    def __init__(self):
-        self.mse = torch.nn.MSELoss()
-        self.loss = 0
-
-    def __call__(self, tensor : torch.Tensor, target : torch.Tensor):
-        clone = tensor.clone()
-        clone.requires_grad = True
-        self.loss = self.mse(input=clone, target=target)
-        self.loss.backward()
-        self.loss = self.loss.item()
-        return clone.grad
-
-
-
-
 
