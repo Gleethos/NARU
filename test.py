@@ -1,4 +1,3 @@
-import os.path
 
 import torch
 
@@ -8,7 +7,7 @@ from lib.data_loader import load_jokes
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
 from lib.model.comps import CONTEXT
-from lib.model.comps.connections import Route, DeepRoute
+from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute
 import time
 
 # ---------------------------------------------------------------------
@@ -107,7 +106,7 @@ class TestEncoder:
 def test_with_autograd_on_dummy_data():
     torch.manual_seed(66642999)
     CONTEXT.BPTT_limit = 10  # 10
-    CONTEXT.routeClass = Route#DeepRoute
+    CONTEXT.routeClass = DeepSmartRoute
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,
@@ -156,3 +155,4 @@ def test_with_autograd_on_dummy_data():
 
 #test_with_autograd_on_jokes()
 test_with_autograd_on_dummy_data()
+

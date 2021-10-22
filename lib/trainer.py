@@ -7,6 +7,8 @@ import collections
 import os
 import json
 
+import sys
+
 
 def tame_gradients(
         weights: list,
@@ -65,12 +67,15 @@ def exec_trial_with_autograd(
         for epoch, sentence in enumerate(training_data):
             choice_matrix, losses = model.train_with_autograd_on(encoder.sequence_words_in(sentence))
             choice_matrices[' '.join(sentence)] = choice_matrix
-            print('Initial full batch training:', epoch+1, 'of', len(training_data), 'completed!')
+            sys.stdout.write("\r" + 'Initial full batch training: '+str(epoch+1)+' of '+str(len(training_data))+' completed!')
+            sys.stdout.flush()
+
         tame_gradients(weights=model.get_params(), accumulation_count=len(training_data))
         optimizer.step()
         optimizer.zero_grad()
         initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
-        print('Initial full batch training step done!\n...')
+        print('\nInitial full batch training step done!')
+        print('----------------------------------------------------------------------------')
 
     print('Looping through epochs now...')
 
@@ -91,7 +96,8 @@ def exec_trial_with_autograd(
         optimizer.step()
         optimizer.zero_grad()
         if print_epochs:
-            print('Epoch', epoch, ' done! latest token loss avg =', sum(last_losses)/len(last_losses),'; Avg loss =', sum(sample_losses)/len(sample_losses), '')
+            sys.stdout.write("\rEpoch "+str(epoch)+' done! latest token loss avg ='+str(sum(last_losses)/len(last_losses))+'; Avg loss ='+str(sum(sample_losses)/len(sample_losses)))
+            sys.stdout.flush()
         epoch_losses.append(sum(sample_losses)/len(sample_losses))
 
         # If we have previous choices we count the changes! This gives useful insight into the model!
