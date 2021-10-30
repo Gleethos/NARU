@@ -15,9 +15,14 @@ def tokenize(text):
     return tokens
 
 
-def load_jokes():
-    df = pd.read_csv('data/jokes/reddit.csv', index_col='ID', header=0)
+def load_jokes(prefix=''):
+    df = pd.read_csv(prefix+'data/jokes/reddit.csv', index_col='ID', header=0)
     jokes = df['Joke'].to_list()
     jokes = [tokenize(j) for j in jokes]
     return jokes
+
+def list_splitter(list_to_split, ratio):
+    elements = len(list_to_split)
+    middle = int(elements * ratio)
+    return list_to_split[:middle], list_to_split[middle:]
 

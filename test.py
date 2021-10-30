@@ -3,19 +3,20 @@ import torch
 
 from lib.embedding import Encoder
 from lib.model.ffnaru import Network
-from lib.data_loader import load_jokes
+from lib.data_loader import load_jokes, list_splitter
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
 from lib.model.comps import CONTEXT
-from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute
+from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute
 import time
 
 # ---------------------------------------------------------------------
 
 
-def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
+def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
     CONTEXT.BPTT_limit = 10 #10
-
+    CONTEXT.routeClass = DeepRoute
+    torch.manual_seed(42)
     model = Network( # feed-forward-NARU
         depth=7,
         max_height=18,
@@ -27,15 +28,15 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
     )
     for W in model.get_params(): W.requires_grad = True
 
-    jokes = load_jokes() # Total: 1592
+    jokes = load_jokes(prefix=path_prefix) # Total: 1592
     optimizer = torch.optim.Adam(model.get_params(), lr=3e-4)
-    encoder = Encoder()
+    encoder = Encoder(path_prefix=path_prefix)
 
-    print(model.str())
-    print()
-    print(jokes[:10])
-    print()
-    print(jokes[10:15])
+    training_data, test_data = list_splitter(jokes, 0.8)
+
+    # Uncomment this if you want to merely play around:
+    #training_data = jokes[:4]
+    #test_data = jokes[4:8]
 
     #save_params( [torch.range(0, 10, 3)], 'models/hey/' )
     #print(load_params('models/hey/'))
@@ -45,16 +46,17 @@ def test_with_autograd_on_jokes():# Uses PyTorchs auto-grad:
     #model.set_params(load_params('models/test_model/'))
 
     for i in range(1):
-        target_folder = 'models/test_model/directed-NARU-net_' + time.strftime("%Y%m%d-%H%M%S") + '/'
+        target_folder = 'models/test_model_DR_B32/directed-NARU-net_' + time.strftime("%Y%m%d-%H%M%S") + '/'
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
-            training_data=jokes[100:],
-            test_data=jokes[0:100],
-            epochs=200,
+            training_data=training_data,
+            test_data=test_data,
+            epochs=500,
             batch_size=32,
-            path=target_folder
+            path=target_folder,
+            do_ini_full_batch=False#
         )
         print('Latest choice matrices:', choice_matrices)
         # SAVING PARAMETERS:
@@ -106,7 +108,7 @@ class TestEncoder:
 def test_with_autograd_on_dummy_data():
     torch.manual_seed(66642999)
     CONTEXT.BPTT_limit = 10  # 10
-    CONTEXT.routeClass = DeepSmartRoute
+    CONTEXT.routeClass = DeepRoute
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,
@@ -132,7 +134,7 @@ def test_with_autograd_on_dummy_data():
             optimizer=optimizer,
             training_data=data[:],
             test_data=data[:],
-            epochs=300,
+            epochs=600,
             make_plots=True
         )
         print(choice_matrices)
@@ -153,6 +155,6 @@ def test_with_autograd_on_dummy_data():
         preds = model.pred(test_sentence)
         print(' '.join(s),':',' '.join(encoder.sequence_vecs_in(preds)))
 
-#test_with_autograd_on_jokes()
-test_with_autograd_on_dummy_data()
+test_with_autograd_on_jokes(path_prefix='../')
+#test_with_autograd_on_dummy_data()
 

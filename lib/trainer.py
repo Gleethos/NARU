@@ -15,7 +15,10 @@ def tame_gradients(
         accumulation_count: int,
         clip: float = 1.0
 ):
-    for W in weights: W.grad /= accumulation_count
+    for W in weights:
+        assert torch.isfinite(W).all()
+        assert torch.isfinite(W.grad).all()
+        W.grad /= accumulation_count
     torch.nn.utils.clip_grad_norm_(weights, clip)
 
 
@@ -69,6 +72,7 @@ def exec_trial_with_autograd(
             choice_matrices[' '.join(sentence)] = choice_matrix
             sys.stdout.write("\r" + 'Initial full batch training: '+str(epoch+1)+' of '+str(len(training_data))+' completed!')
             sys.stdout.flush()
+            tame_gradients(weights=model.get_params(), accumulation_count=1)
 
         tame_gradients(weights=model.get_params(), accumulation_count=len(training_data))
         optimizer.step()
@@ -78,7 +82,7 @@ def exec_trial_with_autograd(
         print('----------------------------------------------------------------------------')
 
     print('Looping through epochs now...')
-
+    assert batch_size > 0
     for epoch in range(epochs):
 
         last_losses = []
@@ -96,8 +100,8 @@ def exec_trial_with_autograd(
         optimizer.step()
         optimizer.zero_grad()
         if print_epochs:
-            sys.stdout.write("\rEpoch "+str(epoch)+' done! latest token loss avg ='+str(sum(last_losses)/len(last_losses))+'; Avg loss ='+str(sum(sample_losses)/len(sample_losses)))
-            sys.stdout.flush()
+            print("Epoch "+str(epoch)+'/'+str(epochs)+': latest token loss avg ='+str(sum(last_losses)/len(last_losses))+'; Avg loss ='+str(sum(sample_losses)/len(sample_losses)))
+
         epoch_losses.append(sum(sample_losses)/len(sample_losses))
 
         # If we have previous choices we count the changes! This gives useful insight into the model!

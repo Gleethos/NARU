@@ -32,7 +32,7 @@ class Bundle(Recorder):
         self.dimensionality = dimensionality
         self.targets = []  # indices of targeted routes! (routes to groups)
         if with_bias:
-            self.bias = torch.randn(1, dimensionality) / 10
+            self.bias = torch.randn(1, dimensionality, requires_grad=True)
             self.bias.grad = torch.zeros(1, dimensionality)
         else:
             self.bias = None

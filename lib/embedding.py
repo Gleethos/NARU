@@ -44,22 +44,22 @@ class keydefaultdict(defaultdict):
         return torch.from_numpy(np.random.randn(50).reshape(1, -1)).to(torch.float32)
 
 
-def load_word_vec_dict():
-    if not os.path.isfile(f'{glove_path}/glove.6B.50d.txt'):
+def load_word_vec_dict(path_prefix=''):
+    if not os.path.isfile(f'{path_prefix}{glove_path}/glove.6B.50d.txt'):
         print('\nFailed to find word embedding data!')
         print('Please download "glove.6B.50d.txt" at "https://nlp.stanford.edu/projects/glove/"!\n')
 
     print('Checking for ".pkl" embedding files...')
-    if not os.path.isfile(f'{glove_path}/6B.50_words.pkl') or not os.path.isfile(f'{glove_path}/6B.50_idx.pkl'):
+    if not os.path.isfile(f'{path_prefix}{glove_path}/6B.50_words.pkl') or not os.path.isfile(f'{path_prefix}{glove_path}/6B.50_idx.pkl'):
         print('Embedding data of type ".pkl" not found! Loading files from raw ".txt" files...')
         convert_txt_to_pkl_files()
 
     # Using those objects we can now create a dictionary that given a word returns its vector.
-    vectors = bcolz.open(f'{glove_path}/6B.50.dat')[:]
+    vectors = bcolz.open(f'{path_prefix}{glove_path}/6B.50.dat')[:]
     vectors = [torch.from_numpy(v.reshape(1, -1)).to(torch.float32) for v in vectors]
 
-    words = pickle.load(open(f'{glove_path}/6B.50_words.pkl', 'rb'))
-    word2idx = pickle.load(open(f'{glove_path}/6B.50_idx.pkl', 'rb'))
+    words = pickle.load(open(f'{path_prefix}{glove_path}/6B.50_words.pkl', 'rb'))
+    word2idx = pickle.load(open(f'{path_prefix}{glove_path}/6B.50_idx.pkl', 'rb'))
     glove = {w: vectors[word2idx[w]] for w in words}
     glove = keydefaultdict(None, glove)
     return glove
@@ -71,8 +71,8 @@ from scipy.spatial import KDTree
 # Word to index encoding...
 class Encoder:
 
-    def __init__(self):
-        self.word_to_vec = load_word_vec_dict()
+    def __init__(self, path_prefix=''):
+        self.word_to_vec = load_word_vec_dict(path_prefix=path_prefix)
         self.vec_i_to_word = dict()
         vectors, i = [], 0
         for word, vector in self.word_to_vec.items():

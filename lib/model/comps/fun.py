@@ -33,7 +33,8 @@ def mish(x, derive=False):
         return x * torch.tanh(sfp(x))
 
 
-
+def gaus(x, mean=0, std=0.5):
+    return torch.exp((-(x - mean) ** 2)/(2* std ** 2))
 
 
 
