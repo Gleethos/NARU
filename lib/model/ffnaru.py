@@ -1,7 +1,6 @@
 
-from lib.model import Loss
+from lib.model import Loss, Settings
 from lib.model.comps.nodes import Bundle
-from lib.model.comps.fun import activation
 from lib.model.comps import CONTEXT
 import math
 import torch
@@ -20,11 +19,11 @@ def dampener_of(current_index: int, num_of_el: int):
 
 class Capsule:
 
-    def __init__(self, dimensionality, size: int, position=None, with_bias=False):
+    def __init__(self, dimensionality, size: int, position=None, with_bias=False, settings: Settings = Settings()):
         self.position = position
         self.bundles = []
         for i in range(size):  # creating "size" number of groups for this capsule
-            self.bundles.append(Bundle(i, dimensionality, position, with_bias=with_bias))
+            self.bundles.append(Bundle(i, dimensionality, position, with_bias=with_bias, settings=settings))
 
 
     def forward(self, time):
@@ -57,9 +56,9 @@ class Capsule:
 
     # Construction :
 
-    def connect_forward(self, next_capsule, max_cone, step):
+    def connect_forward(self, next_capsule, max_cone, step, settings: Settings = Settings()):
         for bundle in self.bundles:
-            bundle.connect_forward(next_capsule.bundles, max_cone, step)
+            bundle.connect_forward(next_capsule.bundles, max_cone, step, settings)
 
     # Execution :
 
@@ -83,7 +82,8 @@ class Network:
                  max_cone=39,
                  D_in=100,
                  D_out=10,
-                 with_bias=False
+                 with_bias=False,
+                 settings: Settings = Settings()
                  ):
         self.ini_args = '(\n' \
                         '    depth      = '+str(depth)+',      # The number of capsules\n' \
@@ -99,20 +99,21 @@ class Network:
         self.b_in = torch.rand(1, D_in, dtype=torch.float32, requires_grad=True)
         self.loss = Loss()
         self.depth = depth
+        self.activation = settings.activation
         assert depth > 3
         dims = [math.floor(float(x)) for x in self.girth_from(depth, D_in, max_dim, D_out)]
         self.heights = [math.floor(float(x)) for x in self.girth_from(depth, 1, max_height, 1)]
         self.capsules = []
 
         for i in range(depth):
-            self.capsules.append(Capsule(dims[i], self.heights[i], position=i, with_bias=with_bias))
+            self.capsules.append(Capsule(dims[i], self.heights[i], position=i, with_bias=with_bias, settings=settings))
 
         for i in range(depth):
             if i != depth - 1:
                 assert len(self.capsules[i].bundles) * max_cone >= len(self.capsules[i + 1].bundles)
                 current_cone = min(len(self.capsules[i + 1].bundles), max_cone)
                 step = max(1, int(len(self.capsules[i + 1].bundles) / current_cone))
-                self.capsules[i].connect_forward(self.capsules[i + 1], current_cone, step)
+                self.capsules[i].connect_forward(self.capsules[i + 1], current_cone, step, settings)
 
     def str(self):
         asStr = ''
@@ -176,7 +177,7 @@ class Network:
 
     def start_with(self, time: int, x: torch.Tensor):
         x = x.matmul(self.W_in) + self.b_in
-        x = activation(x, derive=False)
+        x = self.activation(x, derive=False)
         self.capsules[0].start_with(time, x)
 
     def pred(self, vectors: list):

@@ -37,5 +37,9 @@ def gaus(x, mean=0, std=0.5):
     return torch.exp((-(x - mean) ** 2)/(2* std ** 2))
 
 
+def tanh(x):
+    return torch.tanh(x)
+
+
 
 

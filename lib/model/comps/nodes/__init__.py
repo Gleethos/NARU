@@ -1,6 +1,6 @@
 
 from lib.model.comps import Moment, Recorder, CONTEXT
-from lib.model.comps.fun import activation
+from lib.model import Settings
 import torch
 
 
@@ -23,8 +23,16 @@ def default_moment(dimensionality: int):
 
 class Bundle(Recorder):
 
-    def __init__(self, index: int, dimensionality: int, position=None, with_bias=False):
+    def __init__(
+            self,
+            index: int,
+            dimensionality: int,
+            position=None,
+            with_bias=False,
+            settings: Settings = Settings()
+    ):
         super().__init__(default_lambda=lambda: default_moment(dimensionality))
+        self.activation = settings.activation
         self.position = position
         self.from_conns = dict()
         self.to_conns = dict()
@@ -75,7 +83,7 @@ class Bundle(Recorder):
 
     # Construction :
 
-    def connect_forward(self, next_groups: list, cone_size: int, step: int):
+    def connect_forward(self, next_groups: list, cone_size: int, step: int, settings: Settings = Settings()):
         assert step > 0
         next_groups = [g for g in next_groups if g not in self.from_conns and g not in self.to_conns]
         cone_size = min(cone_size, len(next_groups))
@@ -84,11 +92,11 @@ class Bundle(Recorder):
             target_group = next_groups[target_index]
             self.targets.append(target_index)
             assert target_group.index == target_index
-            self.to_conns[target_group] = CONTEXT.routeClass(D_in=target_group.dimensionality, D_out=self.dimensionality)
-            target_group.register_source(self)
+            self.to_conns[target_group] = settings.route(D_in=target_group.dimensionality, D_out=self.dimensionality)
+            target_group.register_source(self, settings)
 
-    def register_source(self, origin_group):
-        self.from_conns[origin_group] = CONTEXT.routeClass(D_in=origin_group.dimensionality, D_out=self.dimensionality)
+    def register_source(self, origin_group, settings: Settings = Settings()):
+        self.from_conns[origin_group] = settings.route(D_in=origin_group.dimensionality, D_out=self.dimensionality)
 
     def number_of_connections(self):
         count = len(self.from_conns) + len(self.to_conns)
@@ -168,8 +176,7 @@ class Bundle(Recorder):
                 current_moment.state = z  # If this is not the end of the network... : No activation!!
                 current_moment.derivative = 1 / number_of_connections  # The derivative is simple because no function...
             else:
-                current_moment.state = activation(x=z)  # If this is not the start of the network... : Activate!
-                # current_moment.derivative = activation(x=z, derive=True) / number_of_connections
+                current_moment.state = self.activation(x=z)  # Activate if this is not the start or end of the network!
 
             # print('Fwd-'+str(self.nid())+'-'+str(z)+'-Choice:', best_target)
 

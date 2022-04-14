@@ -77,7 +77,6 @@ class TestEncoder:
 
 def test_with_autograd_on_dummy_data():
     torch.manual_seed(66642999)
-    CONTEXT.BPTT_limit = 10  # 10
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,
@@ -124,7 +123,6 @@ def test_with_autograd_on_dummy_data():
 
 def test_with_autograd_on_dummy_data_2():
     torch.manual_seed(66642999)
-    CONTEXT.BPTT_limit = 10  # 10
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,

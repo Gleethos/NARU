@@ -6,7 +6,7 @@ from lib.model.ffnaru import Network
 from lib.data_loader import load_jokes, list_splitter
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
-from lib.model.comps import CONTEXT
+from lib.model import Settings
 from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute
 import time
 
@@ -14,8 +14,6 @@ import time
 
 
 def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
-    CONTEXT.BPTT_limit = 10 #10
-    CONTEXT.routeClass = DeepRoute
     torch.manual_seed(42)
     model = Network( # feed-forward-NARU
         depth=7,
@@ -24,7 +22,8 @@ def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
         max_cone=6,
         D_in=50,
         D_out=50,
-        with_bias=False
+        with_bias=False,
+        settings=Settings(route=DeepRoute)
     )
     for W in model.get_params(): W.requires_grad = True
 
@@ -107,8 +106,6 @@ class TestEncoder:
 
 def test_with_autograd_on_dummy_data():
     torch.manual_seed(66642999)
-    CONTEXT.BPTT_limit = 10  # 10
-    CONTEXT.routeClass = DeepRoute
     model = Network(  # feed-forward-NARU
         depth=4,
         max_height=3,
@@ -116,7 +113,8 @@ def test_with_autograd_on_dummy_data():
         max_cone=3,
         D_in=2,
         D_out=2,
-        with_bias=False
+        with_bias=False,
+        settings=Settings(route=DeepRoute)
     )
     for W in model.get_params(): W.requires_grad = True
     data = [
