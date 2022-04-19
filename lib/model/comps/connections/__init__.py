@@ -87,12 +87,63 @@ class FatRoute:
         m = Moment()
         rec[self] = m
         rh0 = torch.cat((r, h), dim=1)
-        rh = torch.tanh(rh0 @ self.Wrh0) @ self.Wrh
-        rhg = fun.gaus( fun.gasu(rh0.detach() @ self.Wgrh0) @ self.Wgrh )
+        # Note: Now we need a capped activation function so that gradients don't explode
+        # Also: sigmoid converges better than tanh.
+        rh = fun.sig(rh0 @ self.Wrh0) @ self.Wrh
+        # Note: GaSU us better than GaTU here!
+        rhg = fun.gaus( fun.gatu(rh0.detach() @ self.Wgrh0) @ self.Wgrh )
         m.g = rhg.mean().item() # g is used for routing! Largest gate wins!
         m.z = rhg * rh # z is saved for back-prop.
         return m.z # Returning vector "c", the gated connection vector!
 
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# FAT LSTM ROUTE
+
+class FatLSTMRoute:
+
+    def __init__(self, D_in=10, D_out=10):
+        D_h = D_out
+        D_rh = D_in + D_h
+        self.Wrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
+        self.Wrh0.grad = torch.zeros(D_rh, D_rh)
+        self.Wrh       = torch.randn(D_rh, D_out, requires_grad=True)
+        self.Wrh.grad  = torch.zeros(D_rh, D_out)
+
+        self.Wgrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
+        self.Wgrh0.grad = torch.zeros(D_rh, D_rh)
+        self.Wgrh       = torch.randn(D_rh, D_out, requires_grad=True)
+        self.Wgrh.grad  = torch.zeros(D_rh, D_out)
+
+    def get_params(self): return [ self.Wrh0, self.Wrh, self.Wgrh0, self.Wgrh ]
+
+    def set_params(self, params: list):
+        grad1, grad2, grad3, grad4 = self.Wrh0.grad, self.Wrh.grad, self.Wgrh0.grad, self.Wgrh.grad
+        self.Wrh0  *= 0
+        self.Wrh   *= 0
+        self.Wgrh0 *= 0
+        self.Wgrh  *= 0
+        self.Wrh0  += params.pop(0)
+        self.Wrh   += params.pop(0)
+        self.Wgrh0 += params.pop(0)
+        self.Wgrh  += params.pop(0)
+        self.Wrh0.grad  = grad1
+        self.Wrh.grad   = grad2
+        self.Wgrh0.grad = grad3
+        self.Wgrh.grad  = grad4
+
+    def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
+        m = Moment()
+        rec[self] = m
+        rh0 = torch.cat((r, h), dim=1)
+        # Note: Now we need a capped activation function so that gradients don't explode
+        # Also: sigmoid converges better than tanh.
+        rh = fun.sig(rh0 @ self.Wrh0) @ self.Wrh
+        # Note: GaSU us better than GaTU here!
+        rhg = fun.gaus( fun.gatu(rh0.detach() @ self.Wgrh0) @ self.Wgrh )
+        m.g = rhg.mean().item() # g is used for routing! Largest gate wins!
+        m.z = rhg * rh # z is saved for back-prop.
+        return m.z # Returning vector "c", the gated connection vector!
 
 
 

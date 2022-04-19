@@ -19,7 +19,12 @@ class Loss:
 
 class Settings:
 
-    def __init__(self, route=None, activation=None):
+    def __init__(
+            self,
+            route=None,
+            activation=None,
+            loss_fun=lambda pred, exp: torch.sum( (pred - exp)**2 ) / torch.numel(pred)
+    ):
         from lib import Route
         if route is None:
             self.route = Route
@@ -30,3 +35,4 @@ class Settings:
             self.activation = mish
         else:
             self.activation = activation
+        self.loss_fun = loss_fun

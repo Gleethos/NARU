@@ -122,7 +122,7 @@ def exec_trial_with_autograd(
         if initial_network_utilisation is None:
             initial_network_utilisation = avg_saturation(choice_matrices=choice_matrices, sizes=model.heights)
 
-        if test_data is not None:
+        if test_data is not None and len(test_data) > 0:
             validation_losses.append(
                 validate(model=model, encoder=encoder, validation_data=test_data)
             )

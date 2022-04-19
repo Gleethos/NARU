@@ -95,6 +95,7 @@ class Network:
                         '    with_bias  = '+str(with_bias)+'   \n' \
                         ')'
 
+        self.loss_fun = settings.loss_fun
         self.W_in = torch.rand(D_in, D_in, dtype=torch.float32, requires_grad=True)
         self.b_in = torch.rand(1, D_in, dtype=torch.float32, requires_grad=True)
         self.loss = Loss()
@@ -140,6 +141,7 @@ class Network:
     # V2:
     def train_with_autograd_on(self, vectors: list):
         losses = []
+        real_losses = []
         choice_matrix = []
         out_bundle = self.capsules[len(self.capsules) - 1].bundles[0]
 
@@ -161,9 +163,10 @@ class Network:
                 expected = vectors[vector_index]
 
                 predicted = out_bundle.latest(time).state
-                loss = torch.sum( (predicted - expected)**2 ) / torch.numel(predicted)
+                loss = self.loss_fun(predicted, expected)
                 loss = loss / dampener_of(current_index=(time - (self.depth - 1)), num_of_el=(len(vectors)-1))
                 losses.append(loss)
+                real_losses.append(torch.abs(predicted - expected).mean())
             else:
                 assert out_bundle.at(time).is_sleeping
 
@@ -173,7 +176,7 @@ class Network:
         total_loss.backward()
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
-        return choice_matrix, [l.item() for l in losses]
+        return choice_matrix, [l.item() for l in real_losses]
 
     def start_with(self, time: int, x: torch.Tensor):
         x = x.matmul(self.W_in) + self.b_in

@@ -18,21 +18,22 @@ def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
     torch.manual_seed(42)
     model = Network( # feed-forward-NARU
         depth=7,
-        max_height=18,
-        max_dim=128,
-        max_cone=6,
-        D_in=50,
-        D_out=50,
-        with_bias=False,
-        settings=Settings(route=FatRoute, activation=fun.tanh)
+        max_height=18, max_dim=128, max_cone=6,
+        D_in=50, D_out=50,
+        with_bias=True,
+        settings=Settings(
+            route=FatRoute,
+            activation=fun.mish,
+            loss_fun=lambda pred, exp: torch.sum( (pred - exp)**2 ) / torch.numel(pred)
+        )
     )
     for W in model.get_params(): W.requires_grad = True
 
     jokes = load_jokes(prefix=path_prefix) # Total: 1592
-    optimizer = torch.optim.Adam(model.get_params(), lr=3e-4)
+    optimizer = torch.optim.Adam(model.get_params(), lr=3e-2)
     encoder = Encoder(path_prefix=path_prefix)
 
-    training_data, test_data = list_splitter(jokes, 0.8)
+    training_data, test_data = list_splitter(jokes[:1], 1)
 
     # Uncomment this if you want to merely play around:
     #training_data = jokes[:4]
@@ -46,17 +47,17 @@ def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
     #model.set_params(load_params('models/test_model/'))
 
     for i in range(1):
-        target_folder = 'models/test_model_DR_B32/directed-NARU-net_' + time.strftime("%Y%m%d-%H%M%S") + '/'
+        target_folder = 'models/test_model_FR_B1/directed-NARU-net_' + time.strftime("%Y%m%d-%H%M%S") + '/'
         choice_matrices = exec_trial_with_autograd(
             model=model,
             encoder=encoder,
             optimizer=optimizer,
             training_data=training_data,
             test_data=test_data,
-            epochs=500,
-            batch_size=32,
+            epochs=200,
+            batch_size=1,
             path=target_folder,
-            do_ini_full_batch=False#
+            do_ini_full_batch=True
         )
         print('Latest choice matrices:', choice_matrices)
         # SAVING PARAMETERS:
@@ -107,7 +108,7 @@ class TestEncoder:
 
 def test_with_autograd_on_dummy_data():
     torch.manual_seed(66642999)
-    model = Network(  # feed-forward-NARU
+    model = Network( # feed-forward-NARU
         depth=4,
         max_height=3,
         max_dim=4,
