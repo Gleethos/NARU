@@ -174,6 +174,7 @@ class Network:
 
         total_loss = sum(losses)/len(losses)
         total_loss.backward()
+        self.reset_states()
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the training!
         return choice_matrix, [l.item() for l in real_losses]
@@ -202,6 +203,11 @@ class Network:
 
         for r in CONTEXT.recorders: r.reset()  # Resetting allows for a repeat of the prediction!
         return preds
+
+    def reset_states(self):
+        for c in self.capsules:
+            for g in c.bundles:
+                g.reset_states()
 
     def get_params(self):
         assert self.W_in is not None

@@ -50,6 +50,9 @@ def gasu(x):
     cube = x * x * x
     return cube / (1 + torch.abs(cube))
 
+def none(x):
+    return x
+
 
 
 

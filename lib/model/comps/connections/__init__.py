@@ -5,10 +5,13 @@ from lib.model.comps import fun
 from lib.model.comps import Moment
 
 
+class AbstractRoute:
+    def reset(self): pass
+
 # -------------------------------------------------------------------------------------------------------------------- #
 # ROUTE
 
-class Route:
+class Route(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
@@ -51,7 +54,7 @@ class Route:
 # -------------------------------------------------------------------------------------------------------------------- #
 # FAT ROUTE
 
-class FatRoute:
+class FatRoute(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
@@ -100,35 +103,34 @@ class FatRoute:
 # -------------------------------------------------------------------------------------------------------------------- #
 # FAT LSTM ROUTE
 
-class FatLSTMRoute:
+class FatLSTMRoute(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
         D_rh = D_in + D_h
-        self.Wrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
-        self.Wrh0.grad = torch.zeros(D_rh, D_rh)
-        self.Wrh       = torch.randn(D_rh, D_out, requires_grad=True)
-        self.Wrh.grad  = torch.zeros(D_rh, D_out)
+        self.Wrh0      = torch.randn(D_rh, D_out, requires_grad=True)
+        self.Wrh0.grad = torch.zeros(D_rh, D_out)
 
         self.Wgrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
         self.Wgrh0.grad = torch.zeros(D_rh, D_rh)
         self.Wgrh       = torch.randn(D_rh, D_out, requires_grad=True)
         self.Wgrh.grad  = torch.zeros(D_rh, D_out)
+        self.lstm = LSTMCell(input_size=D_out, hidden_size=D_out)
 
-    def get_params(self): return [ self.Wrh0, self.Wrh, self.Wgrh0, self.Wgrh ]
+    def reset(self):
+        self.lstm.reset()
+
+    def get_params(self): return [ self.Wrh0, self.Wgrh0, self.Wgrh ]
 
     def set_params(self, params: list):
-        grad1, grad2, grad3, grad4 = self.Wrh0.grad, self.Wrh.grad, self.Wgrh0.grad, self.Wgrh.grad
+        grad1, grad3, grad4 = self.Wrh0.grad, self.Wgrh0.grad, self.Wgrh.grad
         self.Wrh0  *= 0
-        self.Wrh   *= 0
         self.Wgrh0 *= 0
         self.Wgrh  *= 0
         self.Wrh0  += params.pop(0)
-        self.Wrh   += params.pop(0)
         self.Wgrh0 += params.pop(0)
         self.Wgrh  += params.pop(0)
         self.Wrh0.grad  = grad1
-        self.Wrh.grad   = grad2
         self.Wgrh0.grad = grad3
         self.Wgrh.grad  = grad4
 
@@ -138,19 +140,60 @@ class FatLSTMRoute:
         rh0 = torch.cat((r, h), dim=1)
         # Note: Now we need a capped activation function so that gradients don't explode
         # Also: sigmoid converges better than tanh.
-        rh = fun.sig(rh0 @ self.Wrh0) @ self.Wrh
+        #rh = fun.sig(rh0 @ self.Wrh0) @ self.Wrh
+        rh = self.lstm.call(fun.sig(rh0 @ self.Wrh0))
         # Note: GaSU us better than GaTU here!
         rhg = fun.gaus( fun.gatu(rh0.detach() @ self.Wgrh0) @ self.Wgrh )
         m.g = rhg.mean().item() # g is used for routing! Largest gate wins!
-        m.z = rhg * rh # z is saved for back-prop.
-        return m.z # Returning vector "c", the gated connection vector!
+        m.z: torch.Tensor = rhg * rh # z is saved for back-prop.
+        return m.z# Returning vector "c", the gated connection vector!
 
+
+class LSTMCell:
+    def __init__(self, input_size, hidden_size):
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.weight_ih = torch.randn(4 * hidden_size, input_size, requires_grad=True)
+        self.weight_hh = torch.randn(4 * hidden_size, hidden_size, requires_grad=True)
+        self.bias_ih = torch.randn(4 * hidden_size, requires_grad=True)
+        self.bias_hh = torch.randn(4 * hidden_size, requires_grad=True)
+        self.h = None
+        self.c = None
+
+    def call(self, input):
+        if self.h is None:
+            self.h = input
+            self.c = input
+
+        self.h, self.c = self.forward(input, (self.h, self.c))
+        return self.h
+
+    def forward(self, input, state):
+        # type: (Tensor, Tuple[Tensor, Tensor]) -> Tuple[Tensor, Tuple[Tensor, Tensor]]
+        hx, cx = state
+        gates = (torch.mm(input, self.weight_ih.t()) + self.bias_ih +
+                 torch.mm(hx, self.weight_hh.t()) + self.bias_hh)
+        ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
+
+        ingate = torch.sigmoid(ingate)
+        forgetgate = torch.sigmoid(forgetgate)
+        cellgate = torch.tanh(cellgate)
+        outgate = torch.sigmoid(outgate)
+
+        cy = (forgetgate * cx) + (ingate * cellgate)
+        hy = outgate * torch.tanh(cy)
+
+        return hy, cy
+
+    def reset(self):
+        self.h = None
+        self.c = None
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # DEEP ROUTE
 
-class DeepRoute:
+class DeepRoute(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
@@ -216,7 +259,7 @@ class DeepRoute:
 # DEEP SMART ROUTE
 
 
-class DeepSmartRoute:
+class DeepSmartRoute(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
@@ -285,7 +328,7 @@ class DeepSmartRoute:
 # BIASED DEEP SMART ROUTE
 
 
-class BiasedDeepSmartRoute:
+class BiasedDeepSmartRoute(AbstractRoute):
 
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out

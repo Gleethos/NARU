@@ -8,7 +8,7 @@ from lib.data_loader import load_jokes, list_splitter
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
 from lib.model import Settings
-from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute, FatRoute
+from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute, FatRoute, FatLSTMRoute
 import time
 
 # ---------------------------------------------------------------------
@@ -22,8 +22,8 @@ def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
         D_in=50, D_out=50,
         with_bias=True,
         settings=Settings(
-            route=FatRoute,
-            activation=fun.mish,
+            route=FatLSTMRoute,
+            activation=fun.none,
             loss_fun=lambda pred, exp: torch.sum( (pred - exp)**2 ) / torch.numel(pred)
         )
     )

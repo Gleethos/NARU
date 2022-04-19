@@ -63,6 +63,10 @@ class Bundle(Recorder):
             moment.error = moment.error + e
             moment.error_count = moment.error_count + 1  # -> incrementing the counter! (for normalization)
 
+    def reset_states(self):
+        for node, route in self.to_conns.items(): route.reset()
+        for node, source in self.from_conns.items(): source.reset()
+
     def get_params(self):
         params = []
         if self.bias is not None and len(self.to_conns) == 0: params.append(self.bias)
