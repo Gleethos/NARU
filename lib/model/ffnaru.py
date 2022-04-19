@@ -177,7 +177,7 @@ class Network:
 
     def start_with(self, time: int, x: torch.Tensor):
         x = x.matmul(self.W_in) + self.b_in
-        x = self.activation(x, derive=False)
+        x = self.activation(x)
         self.capsules[0].start_with(time, x)
 
     def pred(self, vectors: list):
@@ -201,10 +201,15 @@ class Network:
         return preds
 
     def get_params(self):
+        assert self.W_in is not None
+        assert self.b_in is not None
         params = [self.W_in, self.b_in]
         for c in self.capsules:
             for g in c.bundles:
-                params.extend(g.get_params())
+                new_params = g.get_params()
+                params.extend(new_params)
+                for W in new_params: assert W.grad is not None
+        #for W in params: assert W.grad is not None
         return params
 
     def set_params(self, params: list):

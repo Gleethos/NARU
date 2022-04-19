@@ -68,6 +68,7 @@ class Bundle(Recorder):
         if self.bias is not None and len(self.to_conns) == 0: params.append(self.bias)
         for node, route in self.to_conns.items(): params.extend(route.get_params())
         for node, source in self.from_conns.items(): params.extend(source.get_params())
+        for W in params: assert W.grad is not None
         return params
 
     def set_params(self, params):

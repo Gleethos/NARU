@@ -1,6 +1,7 @@
 
 import torch
 from lib.model.comps.fun import sig, activation, gaus
+from lib.model.comps import fun
 from lib.model.comps import Moment
 
 
@@ -19,7 +20,6 @@ class Route:
 
         self.Wgr = torch.randn(D_in, 1)
         self.Wgr.grad = torch.zeros(D_in, 1)
-        self.pd_g: torch.Tensor = None  # the partial derivative of g
 
     def get_params(self): return [self.Wr, self.Wgr, self.Wgh]
 
@@ -37,6 +37,7 @@ class Route:
 
     def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
         m = Moment()
+        rec[self] = m
         g = ( r @ self.Wgr + h @ self.Wgh ) / 2
         m.pd_g = sig(g, derive=True) / 2 # inner times outer derivative
         g = sig(g)
@@ -44,8 +45,60 @@ class Route:
         assert 0 <= g <= 1  # Sigmoid should be within bounds!
         m.g = g.mean().item()  # g is used for routing! Largest gate wins!
         m.z = r @ self.Wr # z is saved for back-prop.
-        rec[self] = m
         return g * m.z # Returning vector "c", the gated connection vector!
+
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# FAT ROUTE
+
+class FatRoute:
+
+    def __init__(self, D_in=10, D_out=10):
+        D_h = D_out
+        D_rh = D_in + D_h
+        # tensor([[0.9760, 0.6086]], requires_grad=True)    #1*2
+        # tensor([[0.5605, 0.8273],                         #2*2
+        #         [0.9244, 0.1848]], requires_grad=True)
+        self.Wrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
+        self.Wrh0.grad = torch.zeros(D_rh, D_rh)
+        self.Wrh       = torch.randn(D_rh, D_out, requires_grad=True)
+        self.Wrh.grad  = torch.zeros(D_rh, D_out)
+
+        self.Wgrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
+        self.Wgrh0.grad = torch.zeros(D_rh, D_rh)
+        self.Wgrh       = torch.randn(D_rh, D_out, requires_grad=True)
+        self.Wgrh.grad  = torch.zeros(D_rh, D_out)
+        print("New FatRoute: ", self.Wrh0, "; ", self.Wrh, "; ", self.Wgrh0, "; ", self.Wgrh, "; ")
+
+    def get_params(self): return [ self.Wrh0, self.Wrh, self.Wgrh0, self.Wgrh ]
+
+    def set_params(self, params: list):
+        grad1, grad2, grad3, grad4 = self.Wrh0.grad, self.Wrh.grad, self.Wgrh0.grad, self.Wgrh.grad
+        self.Wrh0  *= 0
+        self.Wrh   *= 0
+        self.Wgrh0 *= 0
+        self.Wgrh  *= 0
+        self.Wrh0  += params.pop(0)
+        self.Wrh   += params.pop(0)
+        self.Wgrh0 += params.pop(0)
+        self.Wgrh  += params.pop(0)
+        self.Wrh0.grad  = grad1
+        self.Wrh.grad   = grad2
+        self.Wgrh0.grad = grad3
+        self.Wgrh.grad  = grad4
+
+    def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
+        m = Moment()
+        rec[self] = m
+        rh0 = torch.cat((r, h), dim=1)
+        rh = torch.tanh(rh0 @ self.Wrh0) @ self.Wrh
+        rhg = fun.gaus( fun.gasu(rh0.detach() @ self.Wgrh0) @ self.Wgrh )
+        m.g = rhg.mean().item() # g is used for routing! Largest gate wins!
+        m.z = rhg * rh # z is saved for back-prop.
+        return m.z # Returning vector "c", the gated connection vector!
+
+
+
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # DEEP ROUTE
@@ -70,15 +123,13 @@ class DeepRoute:
         self.Wgr = torch.randn(D_in, 1)
         self.Wgr.grad = torch.zeros(D_in, 1)
 
-        self.pd_g: torch.Tensor = None  # the partial derivative of g
-
     def get_params(self):
         return [
             self.Wr0, self.Wr, self.Wgr0, self.Wgr, self.Wgh0, self.Wgh
         ]
 
     def set_params(self, params: list):
-        grad1, grad2, grad3, grad4, grad5, grad6 = self.Wr0, self.Wr.grad, self.Wgr0, self.Wgr.grad, self.Wgh0, self.Wgh.grad
+        grad1, grad2, grad3, grad4, grad5, grad6 = self.Wr0.grad, self.Wr.grad, self.Wgr0.grad, self.Wgr.grad, self.Wgh0.grad, self.Wgh.grad
         self.Wr0  *= 0
         self.Wr   *= 0
         self.Wgr0 *= 0

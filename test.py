@@ -2,12 +2,13 @@
 import torch
 
 from lib.embedding import Encoder
+from lib.model.comps import fun
 from lib.model.ffnaru import Network
 from lib.data_loader import load_jokes, list_splitter
 from lib.trainer import exec_trial_with_autograd
 from lib.model.persist import save_params
 from lib.model import Settings
-from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute
+from lib.model.comps.connections import Route, DeepRoute, DeepSmartRoute, BiasedDeepSmartRoute, FatRoute
 import time
 
 # ---------------------------------------------------------------------
@@ -114,7 +115,7 @@ def test_with_autograd_on_dummy_data():
         D_in=2,
         D_out=2,
         with_bias=False,
-        settings=Settings(route=DeepRoute)
+        settings=Settings(route=FatRoute, activation=fun.tanh)
     )
     for W in model.get_params(): W.requires_grad = True
     data = [
@@ -153,6 +154,6 @@ def test_with_autograd_on_dummy_data():
         preds = model.pred(test_sentence)
         print(' '.join(s),':',' '.join(encoder.sequence_vecs_in(preds)))
 
-test_with_autograd_on_jokes(path_prefix='../')
-#test_with_autograd_on_dummy_data()
+#test_with_autograd_on_jokes(path_prefix='../')
+test_with_autograd_on_dummy_data()
 

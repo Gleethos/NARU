@@ -41,5 +41,15 @@ def tanh(x):
     return torch.tanh(x)
 
 
+def gatu(x):
+    cube = x * x * x
+    return tanh(cube)
+
+
+def gasu(x):
+    cube = x * x * x
+    return cube / (1 + torch.abs(cube))
+
+
 
 

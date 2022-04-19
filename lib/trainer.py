@@ -1,6 +1,8 @@
 
 import torch
 import random
+
+from lib import Network
 from lib.net_analysis import load_and_plot, avg_saturation
 
 import collections
@@ -17,13 +19,14 @@ def tame_gradients(
 ):
     for W in weights:
         assert torch.isfinite(W).all()
+        assert W.grad is not None
         assert torch.isfinite(W.grad).all()
         W.grad /= accumulation_count
     torch.nn.utils.clip_grad_norm_(weights, clip)
 
 
 def exec_trial_with_autograd(
-        model,
+        model: Network,
         optimizer,
         encoder,
         training_data,
