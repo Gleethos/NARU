@@ -56,9 +56,6 @@ class FatRoute:
     def __init__(self, D_in=10, D_out=10):
         D_h = D_out
         D_rh = D_in + D_h
-        # tensor([[0.9760, 0.6086]], requires_grad=True)    #1*2
-        # tensor([[0.5605, 0.8273],                         #2*2
-        #         [0.9244, 0.1848]], requires_grad=True)
         self.Wrh0      = torch.randn(D_rh, D_rh, requires_grad=True)
         self.Wrh0.grad = torch.zeros(D_rh, D_rh)
         self.Wrh       = torch.randn(D_rh, D_out, requires_grad=True)
@@ -68,7 +65,6 @@ class FatRoute:
         self.Wgrh0.grad = torch.zeros(D_rh, D_rh)
         self.Wgrh       = torch.randn(D_rh, D_out, requires_grad=True)
         self.Wgrh.grad  = torch.zeros(D_rh, D_out)
-        print("New FatRoute: ", self.Wrh0, "; ", self.Wrh, "; ", self.Wgrh0, "; ", self.Wgrh, "; ")
 
     def get_params(self): return [ self.Wrh0, self.Wrh, self.Wgrh0, self.Wgrh ]
 

@@ -24,7 +24,7 @@ def test_with_autograd_on_jokes(path_prefix=''):# Uses PyTorchs auto-grad:
         D_in=50,
         D_out=50,
         with_bias=False,
-        settings=Settings(route=DeepRoute)
+        settings=Settings(route=FatRoute, activation=fun.tanh)
     )
     for W in model.get_params(): W.requires_grad = True
 
@@ -154,6 +154,6 @@ def test_with_autograd_on_dummy_data():
         preds = model.pred(test_sentence)
         print(' '.join(s),':',' '.join(encoder.sequence_vecs_in(preds)))
 
-#test_with_autograd_on_jokes(path_prefix='../')
-test_with_autograd_on_dummy_data()
+test_with_autograd_on_jokes(path_prefix='../')
+#test_with_autograd_on_dummy_data()
 
