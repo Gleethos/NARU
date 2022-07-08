@@ -398,3 +398,64 @@ class BiasedDeepSmartRoute(AbstractRoute):
         return m.z*g # Returning vector "c", the gated connection vector!
 
 
+# Residual Route #
+
+class ResidualRoute(AbstractRoute):
+
+        def __init__(self, D_in=10, D_out=10):
+            self.I = quasi_identity(D_in, D_out)
+            D_out
+            D_r = D_in
+            D_rh = D_in + D_out
+            self.Wr0 = torch.randn(D_r, D_r, requires_grad=True)
+            self.Wr0.grad = torch.zeros(D_r, D_r)
+            self.Wr = torch.randn(D_r, D_out, requires_grad=True)
+            self.Wr.grad = torch.zeros(D_r, D_out)
+
+            self.Wgrh0 = torch.randn(D_rh, D_rh, requires_grad=True)
+            self.Wgrh0.grad = torch.zeros(D_rh, D_rh)
+            self.Wgrh = torch.randn(D_rh, D_out, requires_grad=True)
+            self.Wgrh.grad = torch.zeros(D_rh, D_out)
+
+        def get_params(self): return [self.Wr0, self.Wr, self.Wgrh0, self.Wgrh]
+
+        def set_params(self, params: list):
+            grad1, grad2, grad3, grad4 = self.Wr0.grad, self.Wr.grad, self.Wgrh0.grad, self.Wgrh.grad
+            self.Wr0 *= 0
+            self.Wr *= 0
+            self.Wgrh0 *= 0
+            self.Wgrh *= 0
+            self.Wr0 += params.pop(0)
+            self.Wr += params.pop(0)
+            self.Wgrh0 += params.pop(0)
+            self.Wgrh += params.pop(0)
+            self.Wr0.grad = grad1
+            self.Wr.grad = grad2
+            self.Wgrh0.grad = grad3
+            self.Wgrh.grad = grad4
+
+        def forward(self, h: torch.Tensor, r: torch.Tensor, rec: dict):
+            m = Moment()
+            rec[self] = m
+            rh0 = torch.cat((r, h), dim=1)
+            # Note: Now we need a capped activation function so that gradients don't explode
+            # Also: sigmoid converges better than tanh.
+            r0 = fun.tanh(r @ self.Wr0) + r
+            rz = fun.tanh( r0 @ self.Wr ) + r0 @ self.I # This is where we close the second residual layer.
+            # Question: GaSU is better than GaTU here!
+            rhg = fun.gaus(fun.gatu(rh0.detach() @ self.Wgrh0) @ self.Wgrh)
+            m.g = rhg.mean().item()  # g is used for routing! Largest gate wins!
+            m.z = rhg * rz
+            return m.z  # Returning vector "c", the gated connection vector!
+
+"""
+   A function which takes an input and an output dimension D_in, D_out, and produces an
+   identity matrix if D_in == D_out, and a quasi identity matrix with 0 padding.
+"""
+def quasi_identity(D_in, D_out):
+    if D_in == D_out:
+        return torch.eye(D_in)
+    elif D_in > D_out:
+        return torch.cat((torch.eye(D_out), torch.zeros(D_in-D_out, D_out)), dim=0)
+    elif D_in < D_out:
+        return torch.cat((torch.eye(D_in), torch.zeros(D_in, D_out-D_in)), dim=1)
